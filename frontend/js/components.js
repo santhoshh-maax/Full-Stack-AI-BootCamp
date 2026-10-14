@@ -124,6 +124,62 @@
     var board = BoardRegistry.getBoard(boardId);
     if (!board) return null;
 
+    if (boardId === 'esp32-devkit') {
+      var width = 270;
+      var height = 450;
+      var top = 62;
+      var rowGap = 28;
+      var leftX = 16;
+      var rightX = width - 16; // 254
+
+      // Real physical 30-pin ESP32 DevKit V1 DIP layout (all 26 supported pins preserved)
+      var leftPinIds = [
+        '3V3', 'GPIO36', 'GPIO39', 'GPIO34', 'GPIO35',
+        'GPIO32', 'GPIO33', 'GPIO25', 'GPIO26', 'GPIO27',
+        'GPIO14', 'GPIO12', 'GPIO13'
+      ];
+      var rightPinIds = [
+        'VIN', 'GND', 'GPIO23', 'GPIO22', 'GPIO21',
+        'GPIO19', 'GPIO18', 'GPIO5', 'GPIO17', 'GPIO16',
+        'GPIO4', 'GPIO2', 'GPIO15'
+      ];
+
+      var pins = [];
+      leftPinIds.forEach(function (pinId, i) {
+        pins.push({
+          id: pinId,
+          label: labelForBoardPin(board, pinId),
+          x: leftX,
+          y: top + i * rowGap,
+          kind: kindForBoardPin(board, pinId),
+          anchor: 'left'
+        });
+      });
+
+      rightPinIds.forEach(function (pinId, i) {
+        pins.push({
+          id: pinId,
+          label: labelForBoardPin(board, pinId),
+          x: rightX,
+          y: top + i * rowGap,
+          kind: kindForBoardPin(board, pinId),
+          anchor: 'right'
+        });
+      });
+
+      return {
+        type: boardId,
+        label: board.name,
+        width: width,
+        height: height,
+        isBoard: true,
+        pins: pins,
+        internalBridges: [],
+        properties: {},
+        description: board.notes
+      };
+    }
+
     var rows = [];
     board.powerPins.forEach(function (p) { rows.push({ pin: p, rail: 'left' }); });
     board.groundPins.forEach(function (p) { rows.push({ pin: p, rail: 'left' }); });

@@ -336,103 +336,373 @@
         cGroup.appendChild(model);
 
       } else {
-        // ---- REALISTIC ESP32 DEVKIT ----
-        // 1. Dark Slate PCB
+        // ---- REALISTIC ESP32 DEVKIT V1 ----
+        var bw = def.width;
+        var bh = def.height;
+
+        // 1. Dark Charcoal Obsidian PCB Body
         cGroup.appendChild(el('rect', {
-          x: 0, y: 0, width: def.width, height: def.height, rx: 10,
-          fill: 'url(#grad-pcb-esp32)', stroke: '#0a0b0d', 'stroke-width': 2
+          x: 0, y: 0, width: bw, height: bh, rx: 8,
+          fill: 'url(#grad-pcb-esp32)', stroke: '#0a0c10', 'stroke-width': 2
         }));
 
-        // 2. Gold Meandering PCB Wi-Fi / BT Antenna (at top)
-        var antX = 85, antY = 8;
-        cGroup.appendChild(el('rect', { x: antX, y: antY, width: 130, height: 32, rx: 3, fill: '#14161a', stroke: '#21252d' }));
+        // 2. Corner Plated Mounting Holes (with annular copper rings and vias)
+        var holes = [
+          { cx: 13, cy: 14 },
+          { cx: bw - 13, cy: 14 },
+          { cx: 13, cy: bh - 14 },
+          { cx: bw - 13, cy: bh - 14 }
+        ];
+        holes.forEach(function (h) {
+          cGroup.appendChild(el('circle', {
+            cx: h.cx, cy: h.cy, r: 7, fill: 'url(#grad-gold)', stroke: '#b58112', 'stroke-width': 0.8
+          }));
+          cGroup.appendChild(el('circle', {
+            cx: h.cx, cy: h.cy, r: 4.2, fill: '#0a0c0f'
+          }));
+        });
+
+        // 3. Subtle PCB Silkscreen Border & Routing Texture
+        cGroup.appendChild(el('rect', {
+          x: 27, y: 6, width: bw - 54, height: bh - 12, rx: 4,
+          fill: 'none', stroke: '#222731', 'stroke-width': 0.8, 'stroke-dasharray': '6 4'
+        }));
+
+        // Subtle copper ground traces
+        cGroup.appendChild(el('line', {
+          x1: 42, y1: 165, x2: 42, y2: 395, stroke: '#1d212a', 'stroke-width': 1.5
+        }));
+        cGroup.appendChild(el('line', {
+          x1: bw - 42, y1: 165, x2: bw - 42, y2: 395, stroke: '#1d212a', 'stroke-width': 1.5
+        }));
+
+        // 4. Header Socket Strips for LEFT and RIGHT rails (Dual In-line Package)
+        // Left header strip
+        cGroup.appendChild(el('rect', {
+          x: 5, y: 46, width: 22, height: 372, rx: 2,
+          fill: '#0c0e12', stroke: '#1b1e25', 'stroke-width': 1
+        }));
+        // Right header strip
+        cGroup.appendChild(el('rect', {
+          x: bw - 27, y: 46, width: 22, height: 372, rx: 2,
+          fill: '#0c0e12', stroke: '#1b1e25', 'stroke-width': 1
+        }));
+
+        // Individual square socket recesses for each of the 13 pin rows
+        for (var row = 0; row < 13; row++) {
+          var socketY = 55 + row * 28;
+          // Left socket recess
+          cGroup.appendChild(el('rect', {
+            x: 9, y: socketY, width: 14, height: 14, rx: 1.5,
+            fill: '#040507', stroke: '#222731', 'stroke-width': 0.8
+          }));
+          cGroup.appendChild(el('circle', {
+            cx: 16, cy: socketY + 7, r: 2.2, fill: 'url(#grad-gold)'
+          }));
+
+          // Right socket recess
+          cGroup.appendChild(el('rect', {
+            x: bw - 23, y: socketY, width: 14, height: 14, rx: 1.5,
+            fill: '#040507', stroke: '#222731', 'stroke-width': 0.8
+          }));
+          cGroup.appendChild(el('circle', {
+            cx: bw - 16, cy: socketY + 7, r: 2.2, fill: 'url(#grad-gold)'
+          }));
+        }
+
+        // 5. Gold Meandering PCB Wi-Fi / BT Antenna (at top center)
+        var antX = Math.round((bw - 110) / 2); // 80
+        var antY = 7;
+        cGroup.appendChild(el('rect', {
+          x: antX, y: antY, width: 110, height: 28, rx: 2,
+          fill: '#0e1014', stroke: '#1d2027', 'stroke-width': 1
+        }));
+        // Gold inverted-F meandering antenna trace
         cGroup.appendChild(el('path', {
-          d: 'M ' + (antX + 15) + ' ' + (antY + 24)
-            + ' L ' + (antX + 15) + ' ' + (antY + 12)
-            + ' L ' + (antX + 35) + ' ' + (antY + 12)
-            + ' L ' + (antX + 35) + ' ' + (antY + 24)
-            + ' L ' + (antX + 55) + ' ' + (antY + 24)
-            + ' L ' + (antX + 55) + ' ' + (antY + 12)
-            + ' L ' + (antX + 75) + ' ' + (antY + 12)
-            + ' L ' + (antX + 75) + ' ' + (antY + 24)
-            + ' L ' + (antX + 95) + ' ' + (antY + 24)
-            + ' L ' + (antX + 95) + ' ' + (antY + 12)
-            + ' L ' + (antX + 115) + ' ' + (antY + 12),
-          stroke: 'url(#grad-gold)', 'stroke-width': 2.5, fill: 'none'
+          d: 'M ' + (antX + 10) + ' ' + (antY + 20)
+            + ' L ' + (antX + 10) + ' ' + (antY + 6)
+            + ' L ' + (antX + 24) + ' ' + (antY + 6)
+            + ' L ' + (antX + 24) + ' ' + (antY + 20)
+            + ' L ' + (antX + 38) + ' ' + (antY + 20)
+            + ' L ' + (antX + 38) + ' ' + (antY + 6)
+            + ' L ' + (antX + 52) + ' ' + (antY + 6)
+            + ' L ' + (antX + 52) + ' ' + (antY + 20)
+            + ' L ' + (antX + 66) + ' ' + (antY + 20)
+            + ' L ' + (antX + 66) + ' ' + (antY + 6)
+            + ' L ' + (antX + 80) + ' ' + (antY + 6)
+            + ' L ' + (antX + 80) + ' ' + (antY + 20)
+            + ' L ' + (antX + 94) + ' ' + (antY + 20)
+            + ' L ' + (antX + 94) + ' ' + (antY + 6)
+            + ' L ' + (antX + 100) + ' ' + (antY + 6),
+          stroke: 'url(#grad-gold)', 'stroke-width': 2.4, fill: 'none',
+          'stroke-linecap': 'round', 'stroke-linejoin': 'round'
+        }));
+        // Antenna feed ground trace
+        cGroup.appendChild(el('line', {
+          x1: antX + 16, y1: antY + 6, x2: antX + 16, y2: antY + 20,
+          stroke: 'url(#grad-gold)', 'stroke-width': 2
         }));
 
-        // 3. Silver Metal RF Shield Can
-        var rfX = 65, rfY = 48, rfW = 170, rfH = 135;
+        // 6. Silver Metal RF Shield Can (ESP-WROOM-32)
+        var rfW = 136, rfH = 118;
+        var rfX = Math.round((bw - rfW) / 2); // 67
+        var rfY = 40;
         cGroup.appendChild(el('rect', {
-          x: rfX, y: rfY, width: rfW, height: rfH, rx: 5,
-          fill: 'url(#grad-rf-shield)', stroke: '#78909c', 'stroke-width': 1.5
+          x: rfX, y: rfY, width: rfW, height: rfH, rx: 4,
+          fill: 'url(#grad-rf-shield)', stroke: '#78909c', 'stroke-width': 1
         }));
+        // Inner beveled reflection line
+        cGroup.appendChild(el('rect', {
+          x: rfX + 2, y: rfY + 2, width: rfW - 4, height: rfH - 4, rx: 3,
+          fill: 'none', stroke: '#ffffff', 'stroke-width': 0.7, opacity: '0.6'
+        }));
+        // Bottom right shield indent
+        cGroup.appendChild(el('rect', {
+          x: rfX + rfW - 14, y: rfY + rfH - 12, width: 12, height: 10, rx: 1,
+          fill: '#546e7a', opacity: '0.2'
+        }));
+
+        // Espressif Emblem
+        var cx = bw / 2;
+        cGroup.appendChild(el('path', {
+          d: 'M ' + cx + ' ' + (rfY + 12)
+            + ' L ' + (cx + 6) + ' ' + (rfY + 15.5)
+            + ' L ' + (cx + 6) + ' ' + (rfY + 22.5)
+            + ' L ' + cx + ' ' + (rfY + 26)
+            + ' L ' + (cx - 6) + ' ' + (rfY + 22.5)
+            + ' L ' + (cx - 6) + ' ' + (rfY + 15.5) + ' Z',
+          fill: 'none', stroke: '#37474f', 'stroke-width': 1.5
+        }));
+        cGroup.appendChild(el('circle', {
+          cx: cx, cy: rfY + 19, r: 2.2, fill: '#37474f'
+        }));
+
+        // Shield Laser Engravings
         var rfText1 = el('text', {
-          x: rfX + rfW / 2, y: rfY + 45, 'text-anchor': 'middle', 'font-size': '15',
-          'font-weight': '800', fill: '#37474f', 'font-family': 'sans-serif'
+          x: cx, y: rfY + 41, 'text-anchor': 'middle', 'font-size': '13.5',
+          'font-weight': '800', fill: '#263238', 'font-family': 'sans-serif'
         });
         rfText1.textContent = 'ESP-WROOM-32';
         cGroup.appendChild(rfText1);
 
         var rfText2 = el('text', {
-          x: rfX + rfW / 2, y: rfY + 70, 'text-anchor': 'middle', 'font-size': '10',
-          'font-weight': '600', fill: '#546e7a', 'font-family': 'sans-serif'
+          x: cx, y: rfY + 56, 'text-anchor': 'middle', 'font-size': '8.2',
+          'font-weight': '600', fill: '#455a64', 'font-family': 'sans-serif'
         });
-        rfText2.textContent = 'Espressif \u00B7 Wi-Fi + BT SoC';
+        rfText2.textContent = 'Wi-Fi + BT + BLE SoC';
         cGroup.appendChild(rfText2);
 
         var rfText3 = el('text', {
-          x: rfX + rfW / 2, y: rfY + 95, 'text-anchor': 'middle', 'font-size': '8.5',
-          'font-weight': '600', fill: '#78909c', 'font-family': 'monospace'
+          x: cx, y: rfY + 68, 'text-anchor': 'middle', 'font-size': '7.2',
+          'font-weight': '600', fill: '#546e7a', 'font-family': 'sans-serif'
         });
-        rfText3.textContent = 'FCC ID: 2AC7Z-ESPWROOM32';
+        rfText3.textContent = 'ESPRESSIF SYSTEMS';
         cGroup.appendChild(rfText3);
 
-        // 4. Micro-USB Port (bottom)
+        var rfText4 = el('text', {
+          x: cx, y: rfY + 80, 'text-anchor': 'middle', 'font-size': '7',
+          'font-weight': '600', fill: '#607d8b', 'font-family': 'monospace'
+        });
+        rfText4.textContent = 'FCC ID: 2AC7Z-ESPWROOM32';
+        cGroup.appendChild(rfText4);
+
+        // Mini 2D Data Matrix / QR Icon
         cGroup.appendChild(el('rect', {
-          x: 130, y: def.height - 20, width: 40, height: 26, rx: 3,
+          x: rfX + 12, y: rfY + 88, width: 18, height: 18, rx: 1,
+          fill: '#37474f', stroke: '#546e7a', 'stroke-width': 0.5
+        }));
+        for (var qx = 0; qx < 3; qx++) {
+          for (var qy = 0; qy < 3; qy++) {
+            if ((qx + qy) % 2 === 0) {
+              cGroup.appendChild(el('rect', {
+                x: rfX + 14 + qx * 4.5, y: rfY + 90 + qy * 4.5, width: 3, height: 3, fill: '#eceff1'
+              }));
+            }
+          }
+        }
+
+        // CE Mark Text
+        var ceText = el('text', {
+          x: rfX + rfW - 18, y: rfY + 102, 'text-anchor': 'middle', 'font-size': '9',
+          'font-weight': '800', fill: '#546e7a', 'font-family': 'sans-serif'
+        });
+        ceText.textContent = 'CE';
+        cGroup.appendChild(ceText);
+
+        // 7. AMS1117-3.3 Linear Voltage Regulator (SOT-223)
+        var regW = 42, regH = 25;
+        var regX = Math.round((bw - regW) / 2); // 114
+        var regY = 170;
+        // Metal Heatsink Tab (top)
+        cGroup.appendChild(el('rect', {
+          x: regX + 8, y: regY - 5, width: 26, height: 6, rx: 1,
+          fill: 'url(#grad-metal-lead)', stroke: '#546e7a', 'stroke-width': 0.5
+        }));
+        // Regulator Body
+        cGroup.appendChild(el('rect', {
+          x: regX, y: regY, width: regW, height: regH, rx: 2,
+          fill: 'url(#grad-ic-chip)', stroke: '#15181c', 'stroke-width': 1
+        }));
+        // 3 Leads (bottom)
+        for (var ld = 0; ld < 3; ld++) {
+          cGroup.appendChild(el('rect', {
+            x: regX + 6 + ld * 12, y: regY + regH, width: 5, height: 6, rx: 0.5,
+            fill: 'url(#grad-metal-lead)', stroke: '#546e7a', 'stroke-width': 0.5
+          }));
+        }
+        var regT1 = el('text', {
+          x: cx, y: regY + 11, 'text-anchor': 'middle', 'font-size': '6.8',
+          'font-weight': '700', fill: '#b0bec5', 'font-family': 'monospace'
+        });
+        regT1.textContent = 'AMS1117';
+        cGroup.appendChild(regT1);
+        var regT2 = el('text', {
+          x: cx, y: regY + 20, 'text-anchor': 'middle', 'font-size': '6.8',
+          'font-weight': '700', fill: '#b0bec5', 'font-family': 'monospace'
+        });
+        regT2.textContent = '3.3V';
+        cGroup.appendChild(regT2);
+
+        // Tantalum/Ceramic bypass capacitors flanking the regulator
+        var caps = [{ x: regX - 16, y: regY + 6 }, { x: regX + regW + 6, y: regY + 6 }];
+        caps.forEach(function (cp) {
+          cGroup.appendChild(el('rect', { x: cp.x, y: cp.y, width: 10, height: 14, rx: 1.5, fill: '#bcaaa4', stroke: '#8d6e63', 'stroke-width': 0.8 }));
+          cGroup.appendChild(el('rect', { x: cp.x, y: cp.y, width: 10, height: 3, fill: 'url(#grad-metal-lead)' }));
+          cGroup.appendChild(el('rect', { x: cp.x, y: cp.y + 11, width: 10, height: 3, fill: 'url(#grad-metal-lead)' }));
+        });
+
+        // 8. Board Silkscreen Branding in Center
+        var espBrand = el('text', {
+          x: cx, y: 224, 'text-anchor': 'middle', 'font-size': '15',
+          'font-weight': '800', fill: '#ffffff', 'font-family': 'sans-serif', 'letter-spacing': '2px'
+        });
+        espBrand.textContent = 'ESP32';
+        cGroup.appendChild(espBrand);
+
+        var devkitBrand = el('text', {
+          x: cx, y: 238, 'text-anchor': 'middle', 'font-size': '9.5',
+          'font-weight': '700', fill: '#64b5f6', 'font-family': 'sans-serif', 'letter-spacing': '1.5px'
+        });
+        devkitBrand.textContent = 'DEVKIT V1';
+        cGroup.appendChild(devkitBrand);
+
+        // 9. Status & Indicator LEDs (PWR in Red, IO2 in Blue)
+        // Red PWR LED
+        cGroup.appendChild(el('rect', { x: 86, y: 254, width: 10, height: 7, rx: 1, fill: '#263238' }));
+        cGroup.appendChild(el('rect', { x: 88, y: 255.5, width: 6, height: 4, rx: 0.8, fill: '#e53935' }));
+        cGroup.appendChild(el('circle', { cx: 91, cy: 257.5, r: 7, fill: '#e53935', opacity: '0.2', 'pointer-events': 'none' }));
+        var pwrTxt = el('text', { x: 74, y: 260.5, 'font-size': '7.5', 'font-weight': '700', fill: '#eceff1', 'font-family': 'monospace' });
+        pwrTxt.textContent = 'PWR';
+        cGroup.appendChild(pwrTxt);
+
+        // Blue IO2 User LED
+        cGroup.appendChild(el('rect', { x: 86, y: 274, width: 10, height: 7, rx: 1, fill: '#263238' }));
+        cGroup.appendChild(el('rect', { x: 88, y: 275.5, width: 6, height: 4, rx: 0.8, fill: '#1e88e5' }));
+        cGroup.appendChild(el('circle', { cx: 91, cy: 277.5, r: 6, fill: '#1e88e5', opacity: '0.2', 'pointer-events': 'none' }));
+        var io2Txt = el('text', { x: 74, y: 280.5, 'font-size': '7.5', 'font-weight': '700', fill: '#eceff1', 'font-family': 'monospace' });
+        io2Txt.textContent = 'IO2';
+        cGroup.appendChild(io2Txt);
+
+        // 10. Silicon Labs CP2102 USB-to-UART Bridge IC (QFN-28)
+        var qfnW = 40, qfnH = 40;
+        var qfnX = Math.round((bw - qfnW) / 2); // 115
+        var qfnY = 295;
+        // QFN-28 Solder Pins (7 pins per side)
+        for (var p = 0; p < 7; p++) {
+          var pinOffset = 4 + p * 5;
+          // Left & Right pins
+          cGroup.appendChild(el('rect', { x: qfnX - 4, y: qfnY + pinOffset, width: 4, height: 2, fill: 'url(#grad-metal-lead)' }));
+          cGroup.appendChild(el('rect', { x: qfnX + qfnW, y: qfnY + pinOffset, width: 4, height: 2, fill: 'url(#grad-metal-lead)' }));
+          // Top & Bottom pins
+          cGroup.appendChild(el('rect', { x: qfnX + pinOffset, y: qfnY - 4, width: 2, height: 4, fill: 'url(#grad-metal-lead)' }));
+          cGroup.appendChild(el('rect', { x: qfnX + pinOffset, y: qfnY + qfnH, width: 2, height: 4, fill: 'url(#grad-metal-lead)' }));
+        }
+        // Chip body
+        cGroup.appendChild(el('rect', {
+          x: qfnX, y: qfnY, width: qfnW, height: qfnH, rx: 3,
+          fill: 'url(#grad-ic-chip)', stroke: '#101215', 'stroke-width': 1
+        }));
+        // Pin 1 orientation index dot
+        cGroup.appendChild(el('circle', {
+          cx: qfnX + 5, cy: qfnY + 5, r: 1.5, fill: '#455a64'
+        }));
+        var qfnT1 = el('text', {
+          x: cx, y: qfnY + 18, 'text-anchor': 'middle', 'font-size': '7.5',
+          'font-weight': '700', fill: '#b0bec5', 'font-family': 'sans-serif'
+        });
+        qfnT1.textContent = 'SILABS';
+        cGroup.appendChild(qfnT1);
+        var qfnT2 = el('text', {
+          x: cx, y: qfnY + 29, 'text-anchor': 'middle', 'font-size': '7',
+          'font-weight': '700', fill: '#90a4ae', 'font-family': 'monospace'
+        });
+        qfnT2.textContent = 'CP2102';
+        cGroup.appendChild(qfnT2);
+
+        // 12.000 MHz Crystal for CP2102
+        cGroup.appendChild(el('rect', {
+          x: qfnX + qfnW + 6, y: qfnY + 12, width: 16, height: 12, rx: 2,
+          fill: 'url(#grad-rf-shield)', stroke: '#78909c', 'stroke-width': 0.8
+        }));
+        var xtalT = el('text', {
+          x: qfnX + qfnW + 14, y: qfnY + 20.5, 'text-anchor': 'middle', 'font-size': '6',
+          'font-weight': '700', fill: '#455a64', 'font-family': 'monospace'
+        });
+        xtalT.textContent = '12.0';
+        cGroup.appendChild(xtalT);
+
+        // 11. EN (Reset) & BOOT Micro-Tactile Pushbuttons
+        var pbW = 26, pbH = 20;
+        var pushButtons = [
+          { x: 62, y: 402, label: 'EN' },
+          { x: bw - 88, y: 402, label: 'BOOT' }
+        ];
+        pushButtons.forEach(function (btn) {
+          // Metal frame bracket
+          cGroup.appendChild(el('rect', {
+            x: btn.x, y: btn.y, width: pbW, height: pbH, rx: 2,
+            fill: '#cfd8dc', stroke: '#78909c', 'stroke-width': 1
+          }));
+          // Solder lugs on sides
+          cGroup.appendChild(el('rect', { x: btn.x - 3, y: btn.y + 4, width: 3, height: 4, fill: 'url(#grad-metal-lead)' }));
+          cGroup.appendChild(el('rect', { x: btn.x - 3, y: btn.y + 12, width: 3, height: 4, fill: 'url(#grad-metal-lead)' }));
+          cGroup.appendChild(el('rect', { x: btn.x + pbW, y: btn.y + 4, width: 3, height: 4, fill: 'url(#grad-metal-lead)' }));
+          cGroup.appendChild(el('rect', { x: btn.x + pbW, y: btn.y + 12, width: 3, height: 4, fill: 'url(#grad-metal-lead)' }));
+          // Black circular tactile nub
+          cGroup.appendChild(el('circle', {
+            cx: btn.x + pbW / 2, cy: btn.y + pbH / 2, r: 5, fill: '#212529'
+          }));
+          // White silkscreen label
+          var lbl = el('text', {
+            x: btn.x + pbW / 2, y: btn.y + pbH + 11, 'text-anchor': 'middle', 'font-size': '8',
+            'font-weight': '800', fill: '#ffffff', 'font-family': 'sans-serif'
+          });
+          lbl.textContent = btn.label;
+          cGroup.appendChild(lbl);
+        });
+
+        // 12. Micro-USB Port (bottom center, realistic stamped metal connector)
+        var usbW = 40, usbH = 28;
+        var usbX = Math.round((bw - usbW) / 2); // 115
+        var usbY = bh - 24;
+        // Metal Shell
+        cGroup.appendChild(el('rect', {
+          x: usbX, y: usbY, width: usbW, height: usbH, rx: 3,
           fill: 'url(#grad-metal-lead)', stroke: '#546e7a', 'stroke-width': 1.2
         }));
+        // Mounting tabs on sides
+        cGroup.appendChild(el('rect', { x: usbX - 4, y: usbY + 4, width: 4, height: 12, fill: 'url(#grad-metal-lead)', stroke: '#546e7a', 'stroke-width': 0.8 }));
+        cGroup.appendChild(el('rect', { x: usbX + usbW, y: usbY + 4, width: 4, height: 12, fill: 'url(#grad-metal-lead)', stroke: '#546e7a', 'stroke-width': 0.8 }));
+        // Socket receptacle cavity
         cGroup.appendChild(el('rect', {
-          x: 138, y: def.height - 10, width: 24, height: 12, rx: 1, fill: '#14181c'
+          x: usbX + 8, y: usbY + 10, width: 24, height: 14, rx: 1.5, fill: '#14181c'
         }));
-
-        // 5. EN and BOOT micro-tactile pushbuttons
-        var btns = [
-          { x: 75, y: def.height - 35, label: 'EN' },
-          { x: 200, y: def.height - 35, label: 'BOOT' }
-        ];
-        btns.forEach(function (b) {
-          cGroup.appendChild(el('rect', { x: b.x, y: b.y, width: 24, height: 18, rx: 2, fill: '#cfd8dc', stroke: '#78909c' }));
-          cGroup.appendChild(el('circle', { cx: b.x + 12, cy: b.y + 9, r: 4.5, fill: '#263238' }));
-          var bt = el('text', {
-            x: b.x + 12, y: b.y + 26, 'text-anchor': 'middle', 'font-size': '7.5',
-            'font-weight': '700', fill: '#ffffff', 'font-family': 'sans-serif'
-          });
-          bt.textContent = b.label;
-          cGroup.appendChild(bt);
-        });
-
-        // 6. Header Socket Strips for left and right rails
-        cGroup.appendChild(el('rect', {
-          x: 6, y: 56, width: 20, height: def.height - 72, rx: 2,
-          fill: '#0f1114', stroke: '#1a1d22', 'stroke-width': 1
-        }));
-        cGroup.appendChild(el('rect', {
-          x: 140, y: 56, width: 20, height: def.height - 72, rx: 2,
-          fill: '#0f1114', stroke: '#1a1d22', 'stroke-width': 1
-        }));
-        cGroup.appendChild(el('rect', {
-          x: 268, y: 56, width: 20, height: def.height - 72, rx: 2,
-          fill: '#0f1114', stroke: '#1a1d22', 'stroke-width': 1
-        }));
-
-        var espBrand = el('text', {
-          x: 150, y: 215, 'text-anchor': 'middle', 'font-size': '13',
-          'font-weight': '800', fill: '#ffffff', 'font-family': 'sans-serif', 'letter-spacing': '1px'
-        });
-        espBrand.textContent = 'ESP32 DEVKIT V1';
-        cGroup.appendChild(espBrand);
+        // Gold contact pins inside receptacle
+        for (var up = 0; up < 5; up++) {
+          cGroup.appendChild(el('rect', {
+            x: usbX + 11.5 + up * 3.6, y: usbY + 12, width: 1.6, height: 7, fill: 'url(#grad-gold)'
+          }));
+        }
       }
     }
 
@@ -776,21 +1046,38 @@
         group.appendChild(dot);
 
         if (pin.anchor !== 'none') {
+          var isBoard = Boolean(def.isBoard);
+          var textColor = '#546e7a';
+          if (isBoard) {
+            if (pin.kind === 'power') textColor = '#ff8a80';
+            else if (pin.kind === 'gnd') textColor = '#cfd8dc';
+            else if (pin.id === 'GPIO34' || pin.id === 'GPIO35' || pin.id === 'GPIO36' || pin.id === 'GPIO39') textColor = '#ce93d8';
+            else textColor = '#ffffff';
+          }
+
           var text;
           if (pin.anchor === 'right') {
             text = el('text', {
-              x: pin.x - 10, y: pin.y + 3, 'text-anchor': 'end',
-              'font-size': '9.5', fill: '#546e7a', 'pointer-events': 'none'
+              x: pin.x - 12, y: pin.y + 3.5, 'text-anchor': 'end',
+              'font-size': isBoard ? '8.8' : '9.5', fill: textColor,
+              'font-weight': isBoard ? '700' : '600',
+              'font-family': isBoard ? 'Consolas, monospace' : 'sans-serif',
+              'pointer-events': 'none'
             });
           } else if (pin.anchor === 'left') {
             text = el('text', {
-              x: pin.x + 10, y: pin.y + 3,
-              'font-size': '9.5', fill: '#546e7a', 'pointer-events': 'none'
+              x: pin.x + 12, y: pin.y + 3.5,
+              'font-size': isBoard ? '8.8' : '9.5', fill: textColor,
+              'font-weight': isBoard ? '700' : '600',
+              'font-family': isBoard ? 'Consolas, monospace' : 'sans-serif',
+              'pointer-events': 'none'
             });
           } else {
             text = el('text', {
-              x: pin.x + 9, y: pin.y + 3,
-              'font-size': '9.5', fill: '#546e7a', 'pointer-events': 'none'
+              x: pin.x + 9, y: pin.y + 3.5,
+              'font-size': '9.5', fill: textColor, 'font-weight': '600',
+              'font-family': isBoard ? 'Consolas, monospace' : 'sans-serif',
+              'pointer-events': 'none'
             });
           }
           text.textContent = pin.label;
