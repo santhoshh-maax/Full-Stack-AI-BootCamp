@@ -38,6 +38,21 @@
       while (l.firstChild) l.removeChild(l.firstChild);
     }
 
+    var dragWireState = null;
+
+    function toPoint(evt) {
+      if (lab.canvas && typeof lab.canvas.toSvgPoint === 'function') {
+        return lab.canvas.toSvgPoint(evt);
+      }
+      var pt = lab.svg.createSVGPoint();
+      pt.x = evt.clientX;
+      pt.y = evt.clientY;
+      var ctm = lab.svg.getScreenCTM();
+      if (!ctm) return { x: evt.clientX, y: evt.clientY };
+      var p = pt.matrixTransform(ctm.inverse());
+      return { x: p.x, y: p.y };
+    }
+
     function wireColor(wire) {
       if (wire.color) return wire.color;
       var a = lab.resolvePin(wire.from);
@@ -49,12 +64,88 @@
       return colorForPin('digital');
     }
 
-    function pathData(a, b) {
-      var dx = Math.max(30, Math.abs(b.x - a.x) * 0.5);
-      var c1x = a.x + (b.x >= a.x ? dx : -dx);
-      var c2x = b.x + (b.x >= a.x ? -dx : dx);
-      return 'M ' + a.x + ' ' + a.y
-        + ' C ' + c1x + ' ' + a.y + ', ' + c2x + ' ' + b.y + ', ' + b.x + ' ' + b.y;
+    function pathData(a, b, wire) {
+      var midX = (a.x + b.x) / 2;
+      var midY = (a.y + b.y) / 2;
+      var hasBend = wire && (wire.dx != null || wire.dy != null) && (Math.abs(wire.dx) > 1 || Math.abs(wire.dy) > 1);
+
+      if (!hasBend) {
+        var dx = Math.max(30, Math.abs(b.x - a.x) * 0.5);
+        var c1x = a.x + (b.x >= a.x ? dx : -dx);
+        var c2x = b.x + (b.x >= a.x ? -dx : dx);
+        return 'M ' + a.x + ' ' + a.y
+          + ' C ' + c1x + ' ' + a.y + ', ' + c2x + ' ' + b.y + ', ' + b.x + ' ' + b.y;
+      }
+
+      var wx = midX + (wire.dx || 0);
+      var wy = midY + (wire.dy || 0);
+
+      // Curve precisely passing through waypoint W(wx, wy)
+      var cx = 2 * wx - 0.5 * (a.x + b.x);
+      var cy = 2 * wy - 0.5 * (a.y + b.y);
+      return 'M ' + a.x + ' ' + a.y + ' Q ' + cx + ' ' + cy + ' ' + b.x + ' ' + b.y;
+    }
+
+    function startWireDrag(wireId, ev) {
+      var pt = toPoint(ev);
+      var wire = lab.state.connections.find(function (c) { return c.id === wireId; });
+      if (!wire) return;
+      var a = lab.resolvePin(wire.from);
+      var b = lab.resolvePin(wire.to);
+      if (!a || !b) return;
+
+      var midX = (a.abs.x + b.abs.x) / 2;
+      var midY = (a.abs.y + b.abs.y) / 2;
+      var curWx = midX + (wire.dx || 0);
+      var curWy = midY + (wire.dy || 0);
+
+      dragWireState = {
+        wireId: wireId,
+        offsetDx: pt.x - curWx,
+        offsetDy: pt.y - curWy,
+        hasMoved: false
+      };
+      lab.setStatus('Dragging wire route. Move mouse to bend wire, release to place.');
+    }
+
+    function onSvgMouseMove(ev) {
+      if (!dragWireState) return;
+      var pt = toPoint(ev);
+      var wire = lab.state.connections.find(function (c) { return c.id === dragWireState.wireId; });
+      if (!wire) return;
+      var a = lab.resolvePin(wire.from);
+      var b = lab.resolvePin(wire.to);
+      if (!a || !b) return;
+
+      var midX = (a.abs.x + b.abs.x) / 2;
+      var midY = (a.abs.y + b.abs.y) / 2;
+      wire.dx = Math.round(pt.x - dragWireState.offsetDx - midX);
+      wire.dy = Math.round(pt.y - dragWireState.offsetDy - midY);
+      dragWireState.hasMoved = true;
+      render();
+    }
+
+    function onSvgMouseUp() {
+      if (dragWireState) {
+        if (dragWireState.hasMoved) {
+          lab.emit('state:changed', { reason: 'wire:route' });
+          lab.setStatus('Wire route adjusted. Double-click handle to reset curve.');
+        }
+        dragWireState = null;
+      }
+    }
+
+    function resetSelectedWireRoute() {
+      if (!controller.selectedWireId) return;
+      var wire = lab.state.connections.find(function (c) { return c.id === controller.selectedWireId; });
+      if (wire) {
+        wire.dx = 0;
+        wire.dy = 0;
+        render();
+        lab.setStatus('Wire route straightened to default.');
+        lab.toast('Wire path straightened.', 'info');
+        lab.emit('state:changed', { reason: 'wire:route' });
+      }
     }
 
     function render() {
@@ -65,12 +156,14 @@
         if (!a || !b) return;
         var selected = controller.selectedWireId === wire.id;
         var color = wireColor(wire);
+        var d = pathData(a.abs, b.abs, wire);
 
+        // Wide hit area for clicking to select wire
         var hit = document.createElementNS(SVG_NS, 'path');
-        hit.setAttribute('d', pathData(a.abs, b.abs));
+        hit.setAttribute('d', d);
         hit.setAttribute('fill', 'none');
         hit.setAttribute('stroke', 'transparent');
-        hit.setAttribute('stroke-width', '14');
+        hit.setAttribute('stroke-width', '16');
         hit.setAttribute('class', 'wire-hit');
         hit.style.cursor = 'pointer';
         hit.addEventListener('click', function (ev) {
@@ -79,41 +172,129 @@
         });
         layer().appendChild(hit);
 
+        // Selected halo glow under wire
+        if (selected) {
+          var halo = document.createElementNS(SVG_NS, 'path');
+          halo.setAttribute('d', d);
+          halo.setAttribute('fill', 'none');
+          halo.setAttribute('stroke', color);
+          halo.setAttribute('stroke-width', '10');
+          halo.setAttribute('opacity', '0.28');
+          halo.setAttribute('stroke-linecap', 'round');
+          halo.setAttribute('pointer-events', 'none');
+          layer().appendChild(halo);
+        }
+
+        // Visible wire
         var path = document.createElementNS(SVG_NS, 'path');
-        path.setAttribute('d', pathData(a.abs, b.abs));
+        path.setAttribute('d', d);
         path.setAttribute('fill', 'none');
         path.setAttribute('stroke', color);
-        path.setAttribute('stroke-width', selected ? '5' : '3.5');
+        path.setAttribute('stroke-width', selected ? '4.5' : '3.5');
         path.setAttribute('stroke-linecap', 'round');
         path.setAttribute('pointer-events', 'none');
-        if (selected) path.setAttribute('stroke-dasharray', '10 5');
+        if (selected) path.setAttribute('stroke-dasharray', '8 4');
         layer().appendChild(path);
 
         if (selected) {
-          var mid = { x: (a.abs.x + b.abs.x) / 2, y: (a.abs.y + b.abs.y) / 2 };
+          var midX = (a.abs.x + b.abs.x) / 2;
+          var midY = (a.abs.y + b.abs.y) / 2;
+          var wx = midX + (wire.dx || 0);
+          var wy = midY + (wire.dy || 0);
+
+          // 1. Draggable Adjustment Handle (located at waypoint W)
+          var handleGroup = document.createElementNS(SVG_NS, 'g');
+          handleGroup.setAttribute('class', 'wire-handle-group');
+
+          // Outer dashed guide ring
+          var ring = document.createElementNS(SVG_NS, 'circle');
+          ring.setAttribute('cx', wx);
+          ring.setAttribute('cy', wy);
+          ring.setAttribute('r', '13');
+          ring.setAttribute('fill', 'none');
+          ring.setAttribute('stroke', color);
+          ring.setAttribute('stroke-width', '2');
+          ring.setAttribute('stroke-dasharray', '3 2');
+          ring.setAttribute('class', 'wire-handle-ring');
+          handleGroup.appendChild(ring);
+
+          // Inner solid grab dot
+          var dot = document.createElementNS(SVG_NS, 'circle');
+          dot.setAttribute('cx', wx);
+          dot.setAttribute('cy', wy);
+          dot.setAttribute('r', '7');
+          dot.setAttribute('fill', '#ffffff');
+          dot.setAttribute('stroke', color);
+          dot.setAttribute('stroke-width', '2.5');
+          dot.setAttribute('class', 'wire-handle-dot');
+          handleGroup.appendChild(dot);
+
+          var centerPip = document.createElementNS(SVG_NS, 'circle');
+          centerPip.setAttribute('cx', wx);
+          centerPip.setAttribute('cy', wy);
+          centerPip.setAttribute('r', '2.8');
+          centerPip.setAttribute('fill', color);
+          centerPip.setAttribute('pointer-events', 'none');
+          handleGroup.appendChild(centerPip);
+
+          // Large invisible hit target for effortless dragging
+          var handleHit = document.createElementNS(SVG_NS, 'circle');
+          handleHit.setAttribute('cx', wx);
+          handleHit.setAttribute('cy', wy);
+          handleHit.setAttribute('r', '18');
+          handleHit.setAttribute('fill', 'transparent');
+          handleHit.setAttribute('class', 'wire-handle-hit');
+          handleHit.style.cursor = 'grab';
+          handleHit.addEventListener('mousedown', function (ev) {
+            ev.stopPropagation();
+            startWireDrag(wire.id, ev);
+          });
+          handleHit.addEventListener('dblclick', function (ev) {
+            ev.stopPropagation();
+            wire.dx = 0;
+            wire.dy = 0;
+            render();
+            lab.setStatus('Wire route reset to default curve.');
+            lab.toast('Wire route straightened.', 'info');
+            lab.emit('state:changed', { reason: 'wire:route' });
+          });
+          handleHit.addEventListener('mouseenter', function () {
+            lab.setStatus('⚡ Wire route handle: Click & drag to curve wire | Double-click to straighten');
+          });
+          handleGroup.appendChild(handleHit);
+          layer().appendChild(handleGroup);
+
+          // 2. Separate Delete Button (✕) positioned cleanly at 22% along the wire
+          var delX = a.abs.x * 0.75 + wx * 0.25;
+          var delY = a.abs.y * 0.75 + wy * 0.25;
+
           var marker = document.createElementNS(SVG_NS, 'circle');
-          marker.setAttribute('cx', mid.x);
-          marker.setAttribute('cy', mid.y);
-          marker.setAttribute('r', '7');
-          marker.setAttribute('fill', '#fff');
-          marker.setAttribute('stroke', color);
+          marker.setAttribute('cx', delX);
+          marker.setAttribute('cy', delY);
+          marker.setAttribute('r', '8');
+          marker.setAttribute('fill', '#ffffff');
+          marker.setAttribute('stroke', '#e53935');
           marker.setAttribute('stroke-width', '2');
-          marker.setAttribute('class', 'wire-delete');
+          marker.setAttribute('class', 'wire-delete-marker');
           marker.style.cursor = 'pointer';
           marker.addEventListener('click', function (ev) {
             ev.stopPropagation();
             lab.removeConnection(wire.id);
             controller.selectedWireId = null;
             lab.setSelectedWire(null);
+            updateWireToolbar();
           });
+
           var label = document.createElementNS(SVG_NS, 'text');
-          label.setAttribute('x', mid.x);
-          label.setAttribute('y', mid.y + 4);
+          label.setAttribute('x', delX);
+          label.setAttribute('y', delY + 4);
           label.setAttribute('text-anchor', 'middle');
-          label.setAttribute('font-size', '10');
-          label.setAttribute('fill', color);
+          label.setAttribute('font-size', '10.5');
+          label.setAttribute('font-weight', '700');
+          label.setAttribute('fill', '#e53935');
           label.setAttribute('pointer-events', 'none');
           label.textContent = '\u2715';
+
           layer().appendChild(marker);
           layer().appendChild(label);
         }
@@ -122,26 +303,21 @@
       renderPending();
     }
 
-    function renderPending() {
-      if (!controller.pendingRef) return;
-      var p = lab.resolvePin(controller.pendingRef);
-      if (!p) return;
-      var g = document.createElementNS(SVG_NS, 'circle');
-      g.setAttribute('cx', p.abs.x);
-      g.setAttribute('cy', p.abs.y);
-      g.setAttribute('r', '12');
-      g.setAttribute('fill', 'none');
-      g.setAttribute('stroke', '#ff9800');
-      g.setAttribute('stroke-width', '3');
-      g.setAttribute('class', 'pending-beacon');
-      layer().appendChild(g);
+    function updateWireToolbar() {
+      var resetBtn = document.getElementById('btnResetWire');
+      if (resetBtn) {
+        resetBtn.style.display = controller.selectedWireId ? 'inline-flex' : 'none';
+      }
     }
 
     function selectWire(id) {
       controller.selectedWireId = id;
       lab.setSelectedWire(id);
+      updateWireToolbar();
       render();
-      lab.setStatus('Wire selected. Click the \u2715 marker or press Delete to remove it.');
+      if (id) {
+        lab.setStatus('⚡ Wire selected: Drag the circular handle to route wire • Click ✕ to delete • Double-click handle to straighten');
+      }
     }
 
     function updateWireModeUI() {
@@ -257,6 +433,10 @@
       setWireMode: setWireMode,
       toggleWireMode: toggleWireMode,
       setColor: setColor,
+      onSvgMouseMove: onSvgMouseMove,
+      onSvgMouseUp: onSvgMouseUp,
+      isDraggingWire: function () { return Boolean(dragWireState); },
+      resetSelectedWireRoute: resetSelectedWireRoute,
       get selectedColor() { return controller.selectedColor; },
       get selectedWireId() { return controller.selectedWireId; }
     };

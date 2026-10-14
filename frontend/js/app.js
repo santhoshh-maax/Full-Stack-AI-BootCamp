@@ -141,6 +141,8 @@
   Lab.setSelectedWire = function (id) {
     Lab.selectedWireId = id;
     if (id) Lab.selectedComponentId = null;
+    var resetBtn = document.getElementById('btnResetWire');
+    if (resetBtn) resetBtn.style.display = id ? 'inline-flex' : 'none';
   };
 
   Lab.addConnection = function (from, to, color) {
@@ -529,6 +531,42 @@
       });
     });
 
+    // Reset wire route button
+    var resetWireBtn = document.getElementById('btnResetWire');
+    if (resetWireBtn) {
+      resetWireBtn.addEventListener('click', function () {
+        if (Lab.wires && Lab.wires.resetSelectedWireRoute) {
+          Lab.wires.resetSelectedWireRoute();
+        }
+      });
+    }
+
+    // Zoom controls dock buttons
+    var btnZoomIn = document.getElementById('btnZoomIn');
+    if (btnZoomIn) {
+      btnZoomIn.addEventListener('click', function () {
+        if (Lab.canvas && Lab.canvas.zoomIn) Lab.canvas.zoomIn();
+      });
+    }
+    var btnZoomOut = document.getElementById('btnZoomOut');
+    if (btnZoomOut) {
+      btnZoomOut.addEventListener('click', function () {
+        if (Lab.canvas && Lab.canvas.zoomOut) Lab.canvas.zoomOut();
+      });
+    }
+    var btnZoomReset = document.getElementById('btnZoomReset');
+    if (btnZoomReset) {
+      btnZoomReset.addEventListener('click', function () {
+        if (Lab.canvas && Lab.canvas.resetZoom) Lab.canvas.resetZoom();
+      });
+    }
+    var zoomBadge = document.getElementById('zoomBadge');
+    if (zoomBadge) {
+      zoomBadge.addEventListener('click', function () {
+        if (Lab.canvas && Lab.canvas.resetZoom) Lab.canvas.resetZoom();
+      });
+    }
+
     document.getElementById('btnClear').addEventListener('click', function () {
       if (Lab.state.components.length === 0) { Lab.toast('Workspace is already empty.', 'info'); return; }
       if (window.confirm('Clear the workspace and all wires?')) Lab.clear();
@@ -579,6 +617,21 @@
       } else if (e.key === 'w' || e.key === 'W') {
         if (Lab.wires && Lab.wires.toggleWireMode) {
           Lab.wires.toggleWireMode();
+        }
+      } else if (e.key === '+' || e.key === '=' || (e.ctrlKey && (e.key === '=' || e.key === '+'))) {
+        if (Lab.canvas && Lab.canvas.zoomIn) {
+          e.preventDefault();
+          Lab.canvas.zoomIn();
+        }
+      } else if (e.key === '-' || e.key === '_' || (e.ctrlKey && (e.key === '-' || e.key === '_'))) {
+        if (Lab.canvas && Lab.canvas.zoomOut) {
+          e.preventDefault();
+          Lab.canvas.zoomOut();
+        }
+      } else if (e.key === '0' && (e.ctrlKey || e.metaKey)) {
+        if (Lab.canvas && Lab.canvas.resetZoom) {
+          e.preventDefault();
+          Lab.canvas.resetZoom();
         }
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         if (Lab.selectedComponentId) { Lab.removeComponent(Lab.selectedComponentId); }
@@ -636,6 +689,7 @@
     Lab.usageDashboard = global.UsageDashboard.create(Lab);
 
     Lab.onPinClick = function (ref) { Lab.wires.onPinClick(ref); };
+    Lab.toSvgPoint = function (ev) { return Lab.canvas ? Lab.canvas.toSvgPoint(ev) : { x: ev.clientX, y: ev.clientY }; };
     Lab.redraw = function () { Lab.canvas.render(); };
 
     bindNav();

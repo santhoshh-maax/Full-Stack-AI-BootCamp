@@ -1143,8 +1143,130 @@
       lab.selectComponent(id);
     }
 
+    // ---- Zoom and Pan Engine ---------------------------------------
+    var zoomState = {
+      scale: 1.0,
+      panX: 0,
+      panY: 0,
+      minScale: 0.35,
+      maxScale: 2.8
+    };
+    var panDragState = null;
+
+    function updateViewBox() {
+      if (!lab.svg) return;
+      var baseW = 1400;
+      var baseH = 900;
+      var curW = baseW / zoomState.scale;
+      var curH = baseH / zoomState.scale;
+      var vx = zoomState.panX + (baseW - curW) / 2;
+      var vy = zoomState.panY + (baseH - curH) / 2;
+      lab.svg.setAttribute('viewBox', vx.toFixed(2) + ' ' + vy.toFixed(2) + ' ' + curW.toFixed(2) + ' ' + curH.toFixed(2));
+
+      var badge = document.getElementById('zoomBadge');
+      if (badge) {
+        badge.textContent = Math.round(zoomState.scale * 100) + '%';
+      }
+    }
+
+    function zoomAt(targetPoint, factor) {
+      var oldScale = zoomState.scale;
+      var newScale = Math.min(zoomState.maxScale, Math.max(zoomState.minScale, oldScale * factor));
+      if (Math.abs(newScale - oldScale) < 0.001) return;
+
+      var baseW = 1400, baseH = 900;
+      var oldW = baseW / oldScale;
+      var oldH = baseH / oldScale;
+      var newW = baseW / newScale;
+      var newH = baseH / newScale;
+
+      var ratioX = (targetPoint.x - (zoomState.panX + (baseW - oldW) / 2)) / oldW;
+      var ratioY = (targetPoint.y - (zoomState.panY + (baseH - oldH) / 2)) / oldH;
+
+      zoomState.panX = targetPoint.x - ratioX * newW - (baseW - newW) / 2;
+      zoomState.panY = targetPoint.y - ratioY * newH - (baseH - newH) / 2;
+      zoomState.scale = newScale;
+      updateViewBox();
+    }
+
+    function zoomAtCenter(factor) {
+      var baseW = 1400, baseH = 900;
+      var curW = baseW / zoomState.scale;
+      var curH = baseH / zoomState.scale;
+      var centerPt = {
+        x: zoomState.panX + (baseW - curW) / 2 + curW / 2,
+        y: zoomState.panY + (baseH - curH) / 2 + curH / 2
+      };
+      zoomAt(centerPt, factor);
+    }
+
+    function zoomIn() {
+      zoomAtCenter(1.2);
+    }
+
+    function zoomOut() {
+      zoomAtCenter(0.833);
+    }
+
+    function resetZoom() {
+      zoomState.scale = 1.0;
+      zoomState.panX = 0;
+      zoomState.panY = 0;
+      updateViewBox();
+      lab.toast('Zoom reset to 100%', 'info');
+    }
+
     function bindSvg() {
+      // 1. Mouse wheel zoom (zooms smoothly towards cursor position)
+      lab.svg.addEventListener('wheel', function (ev) {
+        ev.preventDefault();
+        var pt = toSvgPoint(ev);
+        var factor = ev.deltaY < 0 ? 1.14 : 0.88;
+        zoomAt(pt, factor);
+      }, { passive: false });
+
+      // 2. Mousedown for Canvas Panning
+      lab.svg.addEventListener('mousedown', function (ev) {
+        if (ev.target === lab.svg || (ev.target.classList && ev.target.classList.contains('grid-bg'))) {
+          // If in wire mode, let wire clicks take precedence
+          if (lab.wires && lab.wires.isWireMode && lab.wires.isWireMode()) return;
+          panDragState = {
+            startX: ev.clientX,
+            startY: ev.clientY,
+            initPanX: zoomState.panX,
+            initPanY: zoomState.panY,
+            hasMoved: false
+          };
+          lab.svg.style.cursor = 'grabbing';
+        }
+      });
+
+      // 3. Mousemove
       lab.svg.addEventListener('mousemove', function (ev) {
+        // Wire route handle dragging
+        if (lab.wires && typeof lab.wires.onSvgMouseMove === 'function') {
+          lab.wires.onSvgMouseMove(ev);
+        }
+
+        // Canvas panning
+        if (panDragState) {
+          var dxScreen = ev.clientX - panDragState.startX;
+          var dyScreen = ev.clientY - panDragState.startY;
+          if (Math.abs(dxScreen) > 3 || Math.abs(dyScreen) > 3) {
+            panDragState.hasMoved = true;
+          }
+          var curW = 1400 / zoomState.scale;
+          var curH = 900 / zoomState.scale;
+          var rect = lab.svg.getBoundingClientRect();
+          var sx = curW / (rect.width || 1);
+          var sy = curH / (rect.height || 1);
+          zoomState.panX = panDragState.initPanX - dxScreen * sx;
+          zoomState.panY = panDragState.initPanY - dyScreen * sy;
+          updateViewBox();
+          return;
+        }
+
+        // Component dragging
         if (!controller.dragging) return;
         var point = toSvgPoint(ev);
         var component = lab.state.components.filter(function (c) {
@@ -1161,18 +1283,35 @@
         render();
       });
 
+      // 4. Mouseup
       lab.svg.addEventListener('mouseup', function () {
+        if (lab.wires && typeof lab.wires.onSvgMouseUp === 'function') {
+          lab.wires.onSvgMouseUp();
+        }
+
+        if (panDragState) {
+          lab.svg.style.cursor = '';
+          if (!panDragState.hasMoved) {
+            lab.selectComponent(null);
+            lab.setSelectedWire(null);
+            if (lab.wires) lab.wires.cancel();
+          }
+          panDragState = null;
+        }
+
         if (controller.dragging) {
           controller.dragging = null;
           lab.emit('state:changed', { reason: 'move' });
         }
       });
 
-      lab.svg.addEventListener('click', function (ev) {
-        if (ev.target === lab.svg || ev.target.classList.contains('grid-bg')) {
-          lab.selectComponent(null);
-          lab.setSelectedWire(null);
-          lab.wires.cancel();
+      lab.svg.addEventListener('mouseleave', function () {
+        if (panDragState) {
+          lab.svg.style.cursor = '';
+          panDragState = null;
+        }
+        if (lab.wires && typeof lab.wires.onSvgMouseUp === 'function') {
+          lab.wires.onSvgMouseUp();
         }
       });
     }
@@ -1188,7 +1327,14 @@
     return {
       render: render,
       bindSvg: bindSvg,
-      dropHandler: dropHandler
+      dropHandler: dropHandler,
+      toSvgPoint: toSvgPoint,
+      zoomIn: zoomIn,
+      zoomOut: zoomOut,
+      resetZoom: resetZoom,
+      zoomAt: zoomAt,
+      updateViewBox: updateViewBox,
+      getZoom: function () { return zoomState.scale; }
     };
   }
 

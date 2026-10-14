@@ -81,6 +81,7 @@
         <button type="button" class="wire-chip chip-yellow" data-color="#fbc02d" title="Yellow (PWM / Clock)" style="background:#fbc02d;"></button>
       </div>
       <button id="btnDelete" class="btn" type="button">Delete Selected</button>
+      <button id="btnResetWire" class="btn ghost" type="button" style="display:none;" title="Straighten the selected wire back to default route">Reset Wire Route</button>
       <button id="btnClear" class="btn danger" type="button">Clear Workspace</button>
       <div class="spacer"></div>
       <label class="inline-field">
@@ -91,6 +92,19 @@
     <div class="workspace-wrap">
       <svg id="workspaceSvg" class="workspace" role="img"
            aria-label="Circuit workspace"></svg>
+      <!-- Floating Zoom Controls Dock -->
+      <div class="workspace-zoom-dock" id="workspaceZoomDock" role="toolbar" aria-label="Zoom controls">
+        <button id="btnZoomIn" class="zoom-btn" type="button" title="Zoom In (+ or Scroll Up)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </button>
+        <button id="zoomBadge" class="zoom-level-btn" type="button" title="Click to reset zoom (100%)">100%</button>
+        <button id="btnZoomOut" class="zoom-btn" type="button" title="Zoom Out (- or Scroll Down)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </button>
+        <button id="btnZoomReset" class="zoom-btn" type="button" title="Fit to Screen / Reset View">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+        </button>
+      </div>
     </div>
     <div class="workspace-footer">
       <div id="workspaceStatus" class="workspace-status"></div>
