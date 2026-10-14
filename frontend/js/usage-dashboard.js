@@ -223,18 +223,33 @@
     function show() {
       els.view.classList.add('active');
       document.getElementById('labView').classList.add('hidden');
+      var navLab = document.getElementById('navTabLab');
+      var navUsage = document.getElementById('navTabUsage');
+      if (navLab) navLab.classList.remove('active');
+      if (navUsage) navUsage.classList.add('active');
       refresh();
     }
 
     function hide() {
       els.view.classList.remove('active');
       document.getElementById('labView').classList.remove('hidden');
+      var navLab = document.getElementById('navTabLab');
+      var navUsage = document.getElementById('navTabUsage');
+      if (navLab) navLab.classList.add('active');
+      if (navUsage) navUsage.classList.remove('active');
     }
 
     function init() {
       cache();
-      els.open.addEventListener('click', show);
-      els.back.addEventListener('click', hide);
+      if (els.open) els.open.addEventListener('click', show);
+      if (els.back) els.back.addEventListener('click', hide);
+      var navLab = document.getElementById('navTabLab');
+      if (navLab) navLab.addEventListener('click', hide);
+      var navUsage = document.getElementById('navTabUsage');
+      if (navUsage) navUsage.addEventListener('click', show);
+      var brand = document.getElementById('brandHome');
+      if (brand) brand.addEventListener('click', hide);
+
       els.refresh.addEventListener('click', refresh);
       els.range.addEventListener('change', function () {
         els.custom.style.display = els.range.value === 'custom' ? '' : 'none';

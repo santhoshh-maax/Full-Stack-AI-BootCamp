@@ -9,12 +9,22 @@
 <body>
 
 <header class="topbar">
-  <div class="brand">
+  <div class="brand" id="brandHome" style="cursor:pointer;" title="Click to go to Virtual Circuit Lab">
     <div class="brand-mark">M</div>
     <div class="brand-text">
       <strong>Microcontroller AI Lab</strong>
       <span>Interactive electronics &amp; embedded learning</span>
     </div>
+  </div>
+
+  <!-- Page View Navigation Tabs (Switch between Lab and API Key Usage) -->
+  <div class="page-nav-tabs" role="tablist">
+    <button id="navTabLab" class="page-tab-btn active" type="button">
+      <span class="tab-icon"></span> Virtual Circuit Lab
+    </button>
+    <button id="navTabUsage" class="page-tab-btn" type="button">
+      <span class="tab-icon"></span> AI API Key Usage
+    </button>
   </div>
 
   <div class="nav-controls">
@@ -24,7 +34,11 @@
     </label>
     <label class="nav-field">
       <span>Lesson</span>
-      <select id="lessonSelect"></select>
+      <div class="lesson-picker-wrap">
+        <button id="btnPrevLesson" class="lesson-step-btn" type="button" title="Previous Lesson">◀</button>
+        <select id="lessonSelect"></select>
+        <button id="btnNextLesson" class="lesson-step-btn" type="button" title="Next Lesson">▶</button>
+      </div>
     </label>
     <div class="nav-stat">
       <span class="nav-stat-label">Progress</span>
@@ -35,11 +49,22 @@
       <span id="simBadge" class="badge neutral">Sim: stopped</span>
     </div>
   </div>
-
-  <div class="nav-actions">
-    <button id="btnOpenUsage" class="btn ghost" type="button">AI API Key Usage</button>
-  </div>
 </header>
+
+<!-- Interactive Lesson Pills Subnav -->
+<nav class="lesson-subnav" aria-label="Lesson progression">
+  <div class="lesson-pills" id="lessonPills">
+    <button type="button" class="lesson-pill active" data-lesson="led">
+      <span class="pill-number">1</span> LED Blinking
+    </button>
+    <button type="button" class="lesson-pill" data-lesson="button">
+      <span class="pill-number">2</span> Push Button
+    </button>
+    <button type="button" class="lesson-pill" data-lesson="dht11">
+      <span class="pill-number">3</span> DHT11 Sensor
+    </button>
+  </div>
+</nav>
 
 <main id="labView" class="lab-grid">
 
@@ -56,9 +81,18 @@
       <div id="boardInfo" class="info"></div>
     </section>
 
-    <section class="card">
-      <h2 class="card-title">Lesson</h2>
+    <section class="card lesson-card">
+      <div class="lesson-card-header">
+        <h2 class="card-title" style="margin:0;">Lesson Guide</h2>
+        <div class="card-step-nav">
+          <button id="btnCardPrevLesson" class="card-nav-btn" type="button" title="Previous Lesson">◀ Prev</button>
+          <button id="btnCardNextLesson" class="card-nav-btn" type="button" title="Next Lesson">Next ▶</button>
+        </div>
+      </div>
       <div id="lessonInfo" class="info"></div>
+      <button id="btnLoadLessonCircuit" class="btn primary full-width" type="button" style="margin-top:12px;" title="Reset workspace and place the starter components for this lesson">
+        ⚡ Load Lesson Circuit Setup
+      </button>
     </section>
   </aside>
 

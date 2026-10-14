@@ -223,14 +223,37 @@
     Lab.emit('board:changed', id);
   };
 
-  Lab.setLesson = function (id) {
+  Lab.setLesson = function (id, autoLoad) {
     var lesson = Lessons.getLesson(id);
     if (!lesson) return;
-    if (Lab.state.lesson === id) return;
     Lab.state.lesson = id;
 
     var select = document.getElementById('lessonSelect');
     if (select) select.value = id;
+
+    // Update interactive lesson pills
+    var pills = document.querySelectorAll('.lesson-pill');
+    pills.forEach(function (pill) {
+      if (pill.getAttribute('data-lesson') === id) {
+        pill.classList.add('active');
+      } else {
+        pill.classList.remove('active');
+      }
+    });
+
+    // Update prev / next button states
+    var idx = Lessons.lessonOrder.indexOf(id);
+    var isFirst = idx <= 0;
+    var isLast = idx >= Lessons.lessonOrder.length - 1;
+    var btnPrev = document.getElementById('btnPrevLesson');
+    var btnNext = document.getElementById('btnNextLesson');
+    if (btnPrev) btnPrev.disabled = isFirst;
+    if (btnNext) btnNext.disabled = isLast;
+
+    var btnCardPrev = document.getElementById('btnCardPrevLesson');
+    var btnCardNext = document.getElementById('btnCardNextLesson');
+    if (btnCardPrev) btnCardPrev.disabled = isFirst;
+    if (btnCardNext) btnCardNext.disabled = isLast;
 
     Lab.refreshLessonInfo();
     Lab.refreshProgress();
@@ -238,8 +261,58 @@
     Lab.renderValidation(null);
     Lab.simulator.onLessonChange();
     Lab.codeEditor.setExternalCode('');
+
+    if (autoLoad) {
+      Lab.loadLessonCircuit();
+    } else {
+      Lab.toast('Switched to: ' + lesson.title, 'info');
+      Lab.setStatus('Lesson ' + (idx + 1) + ': ' + lesson.title + '. Click "Load Lesson Circuit Setup" to reset workspace.');
+    }
+
     Lab.emit('state:changed', { reason: 'lesson' });
     Lab.emit('lesson:changed', id);
+  };
+
+  Lab.nextLesson = function () {
+    var list = Lessons.lessonOrder;
+    var idx = list.indexOf(Lab.state.lesson);
+    if (idx < list.length - 1) {
+      Lab.setLesson(list[idx + 1], true);
+    }
+  };
+
+  Lab.prevLesson = function () {
+    var list = Lessons.lessonOrder;
+    var idx = list.indexOf(Lab.state.lesson);
+    if (idx > 0) {
+      Lab.setLesson(list[idx - 1], true);
+    }
+  };
+
+  Lab.loadLessonCircuit = function () {
+    var lesson = Lab.activeLesson();
+    var board = Lab.activeBoard();
+    Lab.state.components = [];
+    Lab.state.connections = [];
+    Lab.selectedComponentId = null;
+    Lab.selectedWireId = null;
+    Lab.pendingRef = null;
+    idCounters = {};
+
+    if (Components.getDefinition(board.id)) {
+      Lab.state.components.push(Components.createInstance(board.id, 80, 140, {
+        id: nextId('board')
+      }));
+    }
+    lesson.defaultComponents.forEach(function (dc) {
+      Lab.state.components.push(Components.createInstance(dc.type, dc.x, dc.y, {
+        id: nextId(dc.type)
+      }));
+    });
+    Lab.canvas.render();
+    Lab.toast('Loaded circuit setup for ' + lesson.title, 'success');
+    Lab.setStatus('Loaded ' + lesson.title + ' setup. Follow the lesson guide to wire pins.');
+    Lab.emit('state:changed', { reason: 'lesson:load' });
   };
 
   // ---- validation --------------------------------------------------
@@ -501,7 +574,37 @@
       lessonSelect.appendChild(opt);
     });
     lessonSelect.value = Lab.state.lesson;
-    lessonSelect.addEventListener('change', function () { Lab.setLesson(lessonSelect.value); });
+    lessonSelect.addEventListener('change', function () { Lab.setLesson(lessonSelect.value, true); });
+
+    // Step Prev/Next buttons in topbar
+    var btnPrev = document.getElementById('btnPrevLesson');
+    if (btnPrev) btnPrev.addEventListener('click', function () { Lab.prevLesson(); });
+    var btnNext = document.getElementById('btnNextLesson');
+    if (btnNext) btnNext.addEventListener('click', function () { Lab.nextLesson(); });
+
+    // Interactive lesson subnav pills
+    var pills = document.querySelectorAll('.lesson-pill');
+    pills.forEach(function (pill) {
+      pill.addEventListener('click', function () {
+        var lessonId = pill.getAttribute('data-lesson');
+        if (lessonId) Lab.setLesson(lessonId, true);
+      });
+    });
+
+    // Lesson card navigation buttons (left column)
+    var btnCardPrev = document.getElementById('btnCardPrevLesson');
+    if (btnCardPrev) btnCardPrev.addEventListener('click', function () { Lab.prevLesson(); });
+    var btnCardNext = document.getElementById('btnCardNextLesson');
+    if (btnCardNext) btnCardNext.addEventListener('click', function () { Lab.nextLesson(); });
+    var btnLoadCircuit = document.getElementById('btnLoadLessonCircuit');
+    if (btnLoadCircuit) btnLoadCircuit.addEventListener('click', function () { Lab.loadLessonCircuit(); });
+
+    // Update initial button states and active pills
+    var currentIdx = Lessons.lessonOrder.indexOf(Lab.state.lesson);
+    if (btnPrev) btnPrev.disabled = currentIdx <= 0;
+    if (btnNext) btnNext.disabled = currentIdx >= Lessons.lessonOrder.length - 1;
+    if (btnCardPrev) btnCardPrev.disabled = currentIdx <= 0;
+    if (btnCardNext) btnCardNext.disabled = currentIdx >= Lessons.lessonOrder.length - 1;
   }
 
   function bindToolbar() {
