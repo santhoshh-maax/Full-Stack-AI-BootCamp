@@ -24,7 +24,9 @@
   function create(lab) {
     var controller = {
       pendingRef: null,
-      selectedWireId: null
+      selectedWireId: null,
+      wireMode: false,
+      selectedColor: 'auto'
     };
 
     function layer() {
@@ -37,6 +39,7 @@
     }
 
     function wireColor(wire) {
+      if (wire.color) return wire.color;
       var a = lab.resolvePin(wire.from);
       var b = lab.resolvePin(wire.to);
       if (!a || !b) return '#90a4ae';
@@ -80,7 +83,7 @@
         path.setAttribute('d', pathData(a.abs, b.abs));
         path.setAttribute('fill', 'none');
         path.setAttribute('stroke', color);
-        path.setAttribute('stroke-width', selected ? '5' : '3');
+        path.setAttribute('stroke-width', selected ? '5' : '3.5');
         path.setAttribute('stroke-linecap', 'round');
         path.setAttribute('pointer-events', 'none');
         if (selected) path.setAttribute('stroke-dasharray', '10 5');
@@ -126,11 +129,11 @@
       var g = document.createElementNS(SVG_NS, 'circle');
       g.setAttribute('cx', p.abs.x);
       g.setAttribute('cy', p.abs.y);
-      g.setAttribute('r', '9');
+      g.setAttribute('r', '12');
       g.setAttribute('fill', 'none');
       g.setAttribute('stroke', '#ff9800');
-      g.setAttribute('stroke-width', '2');
-      g.setAttribute('class', 'pending-pin');
+      g.setAttribute('stroke-width', '3');
+      g.setAttribute('class', 'pending-beacon');
       layer().appendChild(g);
     }
 
@@ -141,11 +144,78 @@
       lab.setStatus('Wire selected. Click the \u2715 marker or press Delete to remove it.');
     }
 
+    function updateWireModeUI() {
+      var btn = document.getElementById('btnWireMode');
+      var picker = document.getElementById('wireColorPicker');
+      var svg = lab.svg || document.getElementById('workspaceSvg');
+
+      if (btn) {
+        if (controller.wireMode) {
+          btn.classList.add('active');
+          var textEl = btn.querySelector('.wire-btn-text');
+          if (textEl) textEl.textContent = 'Wire Mode: ACTIVE';
+        } else {
+          btn.classList.remove('active');
+          var textEl2 = btn.querySelector('.wire-btn-text');
+          if (textEl2) textEl2.textContent = 'Connect Wire';
+        }
+      }
+
+      if (picker) {
+        picker.style.display = controller.wireMode ? 'inline-flex' : 'none';
+      }
+
+      if (svg) {
+        if (controller.wireMode) {
+          svg.classList.add('wire-mode-active');
+        } else {
+          svg.classList.remove('wire-mode-active');
+        }
+      }
+    }
+
+    function setWireMode(active) {
+      controller.wireMode = Boolean(active);
+      if (!controller.wireMode) {
+        controller.pendingRef = null;
+        lab.highlightPending(null);
+        lab.setStatus('Wire Mode: OFF. Drag and select components freely.');
+      } else {
+        lab.setStatus('⚡ Wire Mode ACTIVE: Click the first pin to start drawing a wire.');
+        lab.toast('⚡ Wire Mode is now ACTIVE. Click two pins to connect them.', 'info');
+      }
+      updateWireModeUI();
+      if (lab.canvas && lab.canvas.render) lab.canvas.render();
+      render();
+    }
+
+    function toggleWireMode() {
+      setWireMode(!controller.wireMode);
+    }
+
+    function setColor(color) {
+      controller.selectedColor = color || 'auto';
+      var chips = document.querySelectorAll('.wire-chip');
+      chips.forEach(function (c) {
+        if (c.getAttribute('data-color') === controller.selectedColor) {
+          c.classList.add('active');
+        } else {
+          c.classList.remove('active');
+        }
+      });
+    }
+
     function onPinClick(ref) {
+      // REQUIRE WIRE MODE TO CONNECT:
+      if (!controller.wireMode) {
+        lab.setStatus('Wire Mode is OFF. Click "Connect Wire" in the toolbar to connect components.');
+        lab.toast('🔌 Click the "Connect Wire" button in the toolbar to start connecting pins.', 'info');
+        return;
+      }
+
       if (!controller.pendingRef) {
         controller.pendingRef = ref;
-        var p = lab.resolvePin(ref);
-        lab.setStatus('Start wire at ' + ref + '. Now click a second pin.');
+        lab.setStatus('Connecting from ' + ref + '. Click a second pin to connect.');
         lab.highlightPending(ref);
         render();
         return;
@@ -153,18 +223,20 @@
       if (controller.pendingRef === ref) {
         controller.pendingRef = null;
         lab.highlightPending(null);
-        lab.setStatus('Wire cancelled.');
+        lab.setStatus('Wire start cancelled.');
         render();
         return;
       }
-      var result = lab.addConnection(controller.pendingRef, ref);
+      var chosenColor = controller.selectedColor === 'auto' ? null : controller.selectedColor;
+      var result = lab.addConnection(controller.pendingRef, ref, chosenColor);
       controller.pendingRef = null;
       lab.highlightPending(null);
       if (result && result.error) {
         lab.setStatus(result.error);
         lab.toast(result.error, 'error');
       } else {
-        lab.setStatus('Connected ' + (result.from) + ' \u2192 ' + (result.to) + '.');
+        lab.setStatus('Connected ' + (result.from) + ' \u2192 ' + (result.to) + '. Click another pin to connect, or click "Connect Wire" to stop.');
+        lab.toast('Connected ' + result.from + ' ➜ ' + result.to, 'success');
       }
       render();
     }
@@ -181,6 +253,11 @@
       onPinClick: onPinClick,
       cancel: cancel,
       selectWire: selectWire,
+      isWireMode: function () { return controller.wireMode; },
+      setWireMode: setWireMode,
+      toggleWireMode: toggleWireMode,
+      setColor: setColor,
+      get selectedColor() { return controller.selectedColor; },
       get selectedWireId() { return controller.selectedWireId; }
     };
   }

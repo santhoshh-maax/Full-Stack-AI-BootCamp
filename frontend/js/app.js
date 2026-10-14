@@ -143,7 +143,7 @@
     if (id) Lab.selectedComponentId = null;
   };
 
-  Lab.addConnection = function (from, to) {
+  Lab.addConnection = function (from, to, color) {
     var a = Lab.resolvePin(from);
     var b = Lab.resolvePin(to);
     if (!a || !b) return { error: 'One of those pins does not exist.' };
@@ -159,6 +159,7 @@
       }
     }
     var wire = { id: nextId('wire'), from: from, to: to };
+    if (color) wire.color = color;
     Lab.state.connections.push(wire);
     Lab.emit('state:changed', { reason: 'connect' });
     return { from: from, to: to, id: wire.id };
@@ -506,6 +507,28 @@
       var r = Lab.validate();
       Lab.toast(r.valid ? 'Circuit is valid.' : 'Circuit has errors.', r.valid ? 'success' : 'error');
     });
+
+    // Wire connection tool button
+    var wireBtn = document.getElementById('btnWireMode');
+    if (wireBtn) {
+      wireBtn.addEventListener('click', function () {
+        if (Lab.wires && Lab.wires.toggleWireMode) {
+          Lab.wires.toggleWireMode();
+        }
+      });
+    }
+
+    // Wire color chips
+    var colorChips = document.querySelectorAll('.wire-chip');
+    colorChips.forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        var color = chip.getAttribute('data-color');
+        if (Lab.wires && Lab.wires.setColor) {
+          Lab.wires.setColor(color);
+        }
+      });
+    });
+
     document.getElementById('btnClear').addEventListener('click', function () {
       if (Lab.state.components.length === 0) { Lab.toast('Workspace is already empty.', 'info'); return; }
       if (window.confirm('Clear the workspace and all wires?')) Lab.clear();
@@ -547,8 +570,16 @@
       var tag = (e.target.tagName || '').toLowerCase();
       if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
       if (e.key === 'Escape') {
+        if (Lab.wires && Lab.wires.isWireMode()) {
+          Lab.wires.setWireMode(false);
+          Lab.toast('Wire Mode deactivated.', 'info');
+        }
         Lab.pendingRef = null;
         Lab.canvas.render();
+      } else if (e.key === 'w' || e.key === 'W') {
+        if (Lab.wires && Lab.wires.toggleWireMode) {
+          Lab.wires.toggleWireMode();
+        }
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         if (Lab.selectedComponentId) { Lab.removeComponent(Lab.selectedComponentId); }
         else if (Lab.selectedWireId) { Lab.removeConnection(Lab.selectedWireId); Lab.setSelectedWire(null); Lab.canvas.render(); }

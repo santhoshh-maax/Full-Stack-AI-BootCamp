@@ -66,6 +66,20 @@
   <section class="panel workspace-panel">
     <div class="workspace-toolbar">
       <button id="btnValidate" class="btn primary" type="button">Validate Circuit</button>
+      <button id="btnWireMode" class="btn wire-btn" type="button" title="Click to start connecting wires between component pins">
+        <span class="wire-btn-indicator"></span>
+        <span class="wire-btn-icon">⚡</span>
+        <span class="wire-btn-text">Connect Wire</span>
+      </button>
+      <div id="wireColorPicker" class="wire-color-palette" style="display:none;" title="Select wire color">
+        <span class="wire-color-label">Color:</span>
+        <button type="button" class="wire-chip active" data-color="auto" title="Auto color by pin function">Auto</button>
+        <button type="button" class="wire-chip chip-red" data-color="#e53935" title="Red (Power / 5V / 3.3V)" style="background:#e53935;"></button>
+        <button type="button" class="wire-chip chip-black" data-color="#263238" title="Black (Ground / GND)" style="background:#263238;"></button>
+        <button type="button" class="wire-chip chip-blue" data-color="#1e88e5" title="Blue (Digital Signal)" style="background:#1e88e5;"></button>
+        <button type="button" class="wire-chip chip-green" data-color="#43a047" title="Green (Signal / Data)" style="background:#43a047;"></button>
+        <button type="button" class="wire-chip chip-yellow" data-color="#fbc02d" title="Yellow (PWM / Clock)" style="background:#fbc02d;"></button>
+      </div>
       <button id="btnDelete" class="btn" type="button">Delete Selected</button>
       <button id="btnClear" class="btn danger" type="button">Clear Workspace</button>
       <div class="spacer"></div>

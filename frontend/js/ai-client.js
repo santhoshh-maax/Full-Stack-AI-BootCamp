@@ -15,13 +15,25 @@
   }
 
   function renderMarkdownLite(text) {
-    var safe = escapeHtml(text || '');
-    // Fenced code blocks.
-    safe = safe.replace(/```([a-zA-Z0-9]*)\n([\s\S]*?)```/g, function (m, lang, code) {
+    if (!text) return '';
+    var safe = escapeHtml(text);
+    // Normalize newlines
+    safe = safe.replace(/\r\n/g, '\n');
+    // Fenced code blocks
+    safe = safe.replace(/```([a-zA-Z0-9_+\-]*)[ \t]*\n([\s\S]*?)```/g, function (m, lang, code) {
       return '<pre class="chat-code">' + code.replace(/\n$/, '') + '</pre>';
     });
-    safe = safe.replace(/`([^`]+)`/g, '<code>$1</code>');
+    // Inline code
+    safe = safe.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+    // Bold
     safe = safe.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    // Italic
+    safe = safe.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    // Headers
+    safe = safe.replace(/^### (.*$)/gim, '<strong style="display:block;margin-top:6px;font-size:13px;">$1</strong>');
+    safe = safe.replace(/^## (.*$)/gim, '<strong style="display:block;margin-top:8px;font-size:14px;color:var(--blue-dark);">$1</strong>');
+    safe = safe.replace(/^# (.*$)/gim, '<strong style="display:block;margin-top:10px;font-size:15px;color:var(--blue-dark);">$1</strong>');
+    // Convert newlines to <br>
     safe = safe.replace(/\n/g, '<br>');
     return safe;
   }
@@ -39,12 +51,15 @@
     }
 
     function addMessage(role, html) {
+      if (!els.messages) cache();
       var bubble = document.createElement('div');
       bubble.className = 'chat-msg ' + role;
       bubble.innerHTML = '<div class="chat-avatar">' + (role === 'user' ? 'You' : 'AI') + '</div>'
         + '<div class="chat-bubble">' + html + '</div>';
       els.messages.appendChild(bubble);
-      els.messages.scrollTop = els.messages.scrollHeight;
+      setTimeout(function () {
+        els.messages.scrollTop = els.messages.scrollHeight;
+      }, 20);
       return bubble;
     }
 
@@ -76,6 +91,16 @@
       });
     }
 
+    function removePending(pending) {
+      if (pending) {
+        if (typeof pending.remove === 'function') {
+          pending.remove();
+        } else if (pending.parentNode) {
+          pending.parentNode.removeChild(pending);
+        }
+      }
+    }
+
     function ask(question) {
       if (!question || !question.trim()) return;
       addMessage('user', escapeHtml(question));
@@ -86,10 +111,11 @@
         question: question,
         context: lab.buildAIContext()
       }).then(function (data) {
-        pending.remove();
-        addMessage('assistant', renderMarkdownLite(data.reply || '(no reply)'));
+        removePending(pending);
+        var replyText = data.reply || data.text || '(no reply received)';
+        addMessage('assistant', renderMarkdownLite(replyText));
       }).catch(function (err) {
-        pending.remove();
+        removePending(pending);
         addMessage('assistant error', renderMarkdownLite('**AI tutor unavailable:** ' + err.message));
       }).then(function () { setBusy(false); });
     }
@@ -101,7 +127,7 @@
       postJSON('/api/ai/generate-code', {
         context: lab.buildAIContext()
       }).then(function (data) {
-        pending.remove();
+        removePending(pending);
         var html = renderMarkdownLite(data.explanation || 'Here is the generated code.');
         if (data.code) {
           html += '<pre class="chat-code">' + escapeHtml(data.code) + '</pre>';
@@ -116,7 +142,7 @@
           lab.toast('AI code placed in the editor.', 'success');
         }
       }).catch(function (err) {
-        pending.remove();
+        removePending(pending);
         addMessage('assistant error', renderMarkdownLite(
           '**Code generation unavailable:** ' + err.message
             + '\n\nThe deterministic code generator in the Code tab still works from your circuit.'));
@@ -130,10 +156,10 @@
       postJSON('/api/ai/troubleshoot', {
         context: lab.buildAIContext()
       }).then(function (data) {
-        pending.remove();
+        removePending(pending);
         addMessage('assistant', renderMarkdownLite(data.reply || '(no reply)'));
       }).catch(function (err) {
-        pending.remove();
+        removePending(pending);
         addMessage('assistant error', renderMarkdownLite('**Troubleshooting unavailable:** ' + err.message));
       }).then(function () { setBusy(false); });
     }

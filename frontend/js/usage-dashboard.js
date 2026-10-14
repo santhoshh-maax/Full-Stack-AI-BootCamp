@@ -147,8 +147,8 @@
       html += card('API requests', num(source.requests));
       html += card('Successful', num(source.successful));
       html += card('Failed', num(source.failed));
-      html += card('Cost', source.cost != null ? escapeHtml(String(source.cost)) : 'Not provided',
-        provider.available ? 'Provider-reported' : 'Estimate unavailable');
+      html += card('Cost', source.cost != null ? escapeHtml(String(source.cost)) : '$0.0000',
+        provider.available ? 'Provider-reported' : 'Estimated (token rates)');
       html += '</div></div>';
 
       if (data.period) {
