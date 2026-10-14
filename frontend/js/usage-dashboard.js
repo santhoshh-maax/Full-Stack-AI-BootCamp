@@ -22,6 +22,12 @@
     return v.toLocaleString();
   }
 
+  function money(v) {
+    if (v == null) return '$0.0000';
+    if (typeof v === 'number') return '$' + v.toFixed(v >= 100 ? 2 : 4);
+    return escapeHtml(v);
+  }
+
   function create() {
     var els = {};
     var state = { models: [] };
@@ -149,8 +155,22 @@
       html += card('API requests', num(source.requests));
       html += card('Successful', num(source.successful));
       html += card('Failed', num(source.failed));
-      html += card('Cost', source.cost != null ? escapeHtml(String(source.cost)) : '$0.0000',
-        provider.available ? 'Provider-reported' : 'Estimated (token rates)');
+      html += card('Total amount spent', money(source.cost),
+        provider.available ? 'Provider-reported, overall account' : 'Estimated (token rates), this app only');
+      html += '</div></div>';
+
+      var bal = data.balance || {};
+      html += '<div class="usage-group"><h4>Credit balance</h4><div class="usage-cards">';
+      if (bal.configured && bal.available) {
+        var pct = bal.total > 0 ? Math.round((bal.remaining / bal.total) * 100) : 0;
+        html += card('Total credits', money(bal.total), 'Set via AI_CREDIT_TOTAL');
+        html += card('Spent', money(bal.spent), 'Since ' + new Date(bal.since).toLocaleDateString()
+          + ' \u00B7 ' + bal.source);
+        html += card('Remaining balance', money(bal.remaining), pct + '% of credits left');
+      } else {
+        html += card('Remaining balance', 'Not available',
+          bal.reason || 'Set AI_CREDIT_TOTAL in backend/.env to enable.');
+      }
       html += '</div></div>';
 
       if (data.period) {

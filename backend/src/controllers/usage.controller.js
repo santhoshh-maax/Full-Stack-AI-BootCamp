@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const usageService = require('../services/usage.service');
 const providerUsage = require('../services/provider-usage.service');
@@ -48,7 +48,11 @@ async function summary(req, res, next) {
       (appTracked.models || []).concat(providerReported.models || [])
     )).sort();
 
+    const lifetime = usageService.summarize({ start: new Date(0), end: new Date(), model: null });
+    const balance = await providerUsage.fetchBalance(lifetime.rawCost);
+
     res.json({
+      balance: balance,
       providerReported: providerReported,
       applicationTracked: appTracked,
       models: models,
@@ -87,3 +91,4 @@ async function details(req, res, next) {
 }
 
 module.exports = { status, summary, details };
+

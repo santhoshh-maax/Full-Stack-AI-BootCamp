@@ -1,4 +1,4 @@
-/*
+﻿/*
  * code-editor.js
  * Board-compatible Arduino-style code generation, editing and explanation.
  *
@@ -54,6 +54,8 @@
       var pins = {
         outputPin: (v && v.info && v.info.pins && v.info.pins.outputPin)
           || board.defaultPins.led,
+        outputPins: (v && v.info && v.info.pins && v.info.pins.outputPins
+          && v.info.pins.outputPins.length) ? v.info.pins.outputPins.slice() : null,
         inputPin: (v && v.info && v.info.pins && v.info.pins.inputPin)
           || board.defaultPins.button,
         dataPin: (v && v.info && v.info.pins && v.info.pins.dataPin)
@@ -69,34 +71,43 @@
       var interval = lab.blinkInterval || 500;
       var code = header(board, lesson);
 
+      var outs = (pins.outputPins && pins.outputPins.length) ? pins.outputPins : [pins.outputPin];
+      var multi = outs.length > 1;
+      function ledName(i) { return multi ? 'LED' + (i + 1) + '_PIN' : 'LED_PIN'; }
+      function ledDecls() {
+        return outs.map(function (p, i) {
+          return 'const int ' + ledName(i) + ' = ' + pinNumber(p) + ';  // ' + p + '\n';
+        }).join('');
+      }
+      function ledEach(fmt) {
+        return outs.map(function (p, i) { return fmt(ledName(i)); }).join('');
+      }
+
       if (lesson.id === 'led') {
-        var ledNo = pinNumber(pins.outputPin);
-        code += 'const int LED_PIN = ' + ledNo + ';  // ' + pins.outputPin + '\n';
+        code += ledDecls();
         code += 'const int BLINK_INTERVAL = ' + interval + ';  // milliseconds\n\n';
         code += 'void setup() {\n';
-        code += '  pinMode(LED_PIN, OUTPUT);\n';
+        code += ledEach(function (n) { return '  pinMode(' + n + ', OUTPUT);\n'; });
         code += '}\n\n';
         code += 'void loop() {\n';
-        code += '  digitalWrite(LED_PIN, HIGH);\n';
+        code += ledEach(function (n) { return '  digitalWrite(' + n + ', HIGH);\n'; });
         code += '  delay(BLINK_INTERVAL);\n\n';
-        code += '  digitalWrite(LED_PIN, LOW);\n';
+        code += ledEach(function (n) { return '  digitalWrite(' + n + ', LOW);\n'; });
         code += '  delay(BLINK_INTERVAL);\n';
-        code += '}\n';
-      } else if (lesson.id === 'button') {
+        code += '}\n';      } else if (lesson.id === 'button') {
         var inNo = pinNumber(pins.inputPin);
-        var outNo = pinNumber(pins.outputPin);
         code += 'const int BUTTON_PIN = ' + inNo + ';  // ' + pins.inputPin + '\n';
-        code += 'const int LED_PIN = ' + outNo + ';  // ' + pins.outputPin + '\n\n';
+        code += ledDecls() + '\n';
         code += 'void setup() {\n';
-        code += '  pinMode(LED_PIN, OUTPUT);\n';
+        code += ledEach(function (n) { return '  pinMode(' + n + ', OUTPUT);\n'; });
         code += '  pinMode(BUTTON_PIN, INPUT_PULLUP);  // idle HIGH, pressed LOW\n';
         code += '}\n\n';
         code += 'void loop() {\n';
         code += '  int buttonState = digitalRead(BUTTON_PIN);\n';
         code += '  if (buttonState == LOW) {\n';
-        code += '    digitalWrite(LED_PIN, HIGH);  // button pressed -> LED on\n';
+        code += ledEach(function (n) { return '    digitalWrite(' + n + ', HIGH);  // button pressed -> LED on\n'; });
         code += '  } else {\n';
-        code += '    digitalWrite(LED_PIN, LOW);\n';
+        code += ledEach(function (n) { return '    digitalWrite(' + n + ', LOW);\n'; });
         code += '  }\n';
         code += '}\n';
       } else if (lesson.id === 'dht11') {
@@ -134,10 +145,9 @@
 
       if (lesson.id === 'led') {
         lines.push('<ul>'
-          + '<li><code>LED_PIN</code> is set to <b>' + pins.outputPin
-          + '</b> which maps to Arduino pin number '
-          + pinNumber(pins.outputPin) + '.</li>'
-          + '<li><code>pinMode(LED_PIN, OUTPUT)</code> makes the pin a driver.</li>'
+          + '<li>LED pin(s): <b>' + ((pins.outputPins || [pins.outputPin]).join(', '))
+          + '</b> (one <code>const int</code> per LED, mapped to the board pin number).</li>'
+          + '<li><code>pinMode(..., OUTPUT)</code> makes each LED pin a driver.</li>'
           + '<li><code>digitalWrite</code> HIGH/LOW turns the LED on and off.</li>'
           + '<li><code>delay(BLINK_INTERVAL)</code> pauses the program.</li>'
           + '</ul>');
@@ -241,3 +251,5 @@
     global.CodeEditor = api;
   }
 })(typeof window !== 'undefined' ? window : this);
+
+

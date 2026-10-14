@@ -1,4 +1,4 @@
-/*
+﻿/*
  * simulator.js
  * Lightweight in-browser simulator.
  *
@@ -18,6 +18,7 @@
       running: false,
       lesson: null,
       outputPin: null,
+      leds: [],
       inputPin: null,
       dataPin: null,
       intervalMs: 500,
@@ -69,8 +70,13 @@
 
     function updateLed(newState) {
       sim.ledOn = newState;
-      var led = findComponent('led');
-      if (led) led.properties._on = newState;
+      lab.state.components.forEach(function (c) {
+        if (c.type !== 'led') return;
+        c.properties = c.properties || {};
+        // Only LEDs the validator found wired to a GPIO are driven.
+        var driven = !sim.leds.length || sim.leds.some(function (l) { return l.id === c.id; });
+        c.properties._on = driven ? newState : false;
+      });
       if (els.led) {
         els.led.className = 'virtual-led' + (newState ? ' on' : '');
       }
@@ -116,6 +122,7 @@
       var lesson = lab.activeLesson();
       sim.lesson = lesson.id;
       sim.outputPin = v.info.pins.outputPin || lab.activeBoard().defaultPins.led;
+      sim.leds = (v.info.leds || []).slice();
       sim.inputPin = v.info.pins.inputPin || lab.activeBoard().defaultPins.button;
       sim.dataPin = v.info.pins.dataPin || lab.activeBoard().defaultPins.dht;
       sim.intervalMs = lab.blinkInterval || 500;
@@ -132,7 +139,9 @@
       log('--- simulation started ---');
 
       if (lesson.id === 'led') {
-        log('Board ' + lab.activeBoard().name + ' drives ' + sim.outputPin + ' as an output.');
+        var pinList = sim.leds.length ? sim.leds.map(function (l) { return l.pin; }).join(', ') : sim.outputPin;
+        log('Board ' + lab.activeBoard().name + ' drives ' + (sim.leds.length || 1)
+          + ' LED(s) on ' + pinList + ' as outputs.');
         timer = setInterval(function () {
           updateLed(!sim.ledOn);
         }, sim.intervalMs);
@@ -185,7 +194,7 @@
       // INPUT_PULLUP: pressed => LOW => LED on.
       updateLed(pressed);
       log('digitalRead(' + sim.inputPin + ') = ' + (pressed ? 'LOW' : 'HIGH')
-        + '  ->  digitalWrite(' + sim.outputPin + ', ' + (pressed ? 'HIGH' : 'LOW') + ')');
+        + '  ->  digitalWrite(' + (sim.leds.length ? sim.leds.map(function (l) { return l.pin; }).join('/') : sim.outputPin) + ', ' + (pressed ? 'HIGH' : 'LOW') + ')');
     }
 
     function init() {
@@ -240,3 +249,4 @@
     global.Simulator = api;
   }
 })(typeof window !== 'undefined' ? window : this);
+

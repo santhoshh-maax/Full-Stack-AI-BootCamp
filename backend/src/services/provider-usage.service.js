@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 /*
  * provider-usage.service.js
@@ -96,42 +96,50 @@ async function fetchUsage(range) {
   return fetchOpenAICompatibleUsage(range);
 }
 
-async function fetchAnthropicUsage(range) {
-  const startISO = range.start.toISOString();
-  const endISO = range.end.toISOString();
-  const days = Math.min(31, Math.max(1, Math.ceil((range.end - range.start) / 86400000)));
-
-  const usageUrl = baseUrl() + '/organizations/usage_report/messages'
-    + '?starting_at=' + encodeURIComponent(startISO)
-    + '&ending_at=' + encodeURIComponent(endISO)
-    + '&bucket_width=1d&group_by%5B%5D=model&limit=' + days;
-
-  let response;
-  try {
-    response = await fetchWithTimeout(usageUrl, { headers: anthropicHeaders() });
-  } catch (err) {
-    return { available: false, reason: 'Anthropic usage request failed: ' + err.message };
+/** Follow Anthropic's cursor pagination (has_more / next_page) and collect all buckets. */
+async function fetchAnthropicPages(baseUrlWithQuery) {
+  const buckets = [];
+  let page = null;
+  for (let i = 0; i < 20; i++) {
+    const url = baseUrlWithQuery + (page ? '&page=' + encodeURIComponent(page) : '');
+    const response = await fetchWithTimeout(url, { headers: anthropicHeaders() });
+    if (!response.ok) {
+      const err = new Error('HTTP ' + response.status);
+      err.status = response.status;
+      err.detail = await readError(response);
+      throw err;
+    }
+    const payload = await response.json();
+    (Array.isArray(payload.data) ? payload.data : []).forEach(function (b) { buckets.push(b); });
+    if (payload.has_more && payload.next_page) page = payload.next_page;
+    else break;
   }
+  return buckets;
+}
 
-  if (!response.ok) {
-    const detail = await readError(response);
+async function fetchAnthropicUsage(range) {
+  const usageUrl = baseUrl() + '/organizations/usage_report/messages'
+    + '?starting_at=' + encodeURIComponent(range.start.toISOString())
+    + '&ending_at=' + encodeURIComponent(range.end.toISOString())
+    + '&bucket_width=1d&group_by%5B%5D=model&limit=31';
+
+  let buckets;
+  try {
+    buckets = await fetchAnthropicPages(usageUrl);
+  } catch (err) {
     return {
       available: false,
-      reason: 'Anthropic usage API returned HTTP ' + response.status
-        + (detail ? ' (' + detail + ')' : '')
-        + '. This endpoint requires an Admin API key (sk-ant-admin...).'
+      reason: err.status
+        ? 'Anthropic usage API returned ' + err.message
+          + (err.detail ? ' (' + err.detail + ')' : '')
+          + '. This endpoint requires an Admin API key (sk-ant-admin...).'
+        : 'Anthropic usage request failed: ' + err.message
     };
   }
 
-  let payload;
-  try {
-    payload = await response.json();
-  } catch (err) {
-    return { available: false, reason: 'Anthropic usage response was not valid JSON.' };
-  }
-
-  const rows = normalizeAnthropicUsage(payload);
-  const cost = await fetchAnthropicCost(range);
+  let rows = normalizeAnthropicUsage({ data: buckets });
+  if (range.model) rows = rows.filter(function (r) { return r.model === range.model; });
+  const cost = await fetchAnthropicCost(range.start, range.end);
 
   return {
     available: true,
@@ -170,30 +178,22 @@ function normalizeAnthropicUsage(payload) {
   return rows;
 }
 
-async function fetchAnthropicCost(range) {
+/** Total cost (USD) for the whole organization between two dates, or null if unavailable. */
+async function fetchAnthropicCost(start, end) {
   const url = baseUrl() + '/organizations/cost_report'
-    + '?starting_at=' + encodeURIComponent(range.start.toISOString())
-    + '&ending_at=' + encodeURIComponent(range.end.toISOString())
-    + '&bucket_width=1d';
+    + '?starting_at=' + encodeURIComponent(start.toISOString())
+    + '&ending_at=' + encodeURIComponent(end.toISOString())
+    + '&bucket_width=1d&limit=31';
 
-  let response;
+  let buckets;
   try {
-    response = await fetchWithTimeout(url, { headers: anthropicHeaders() });
-  } catch (err) {
-    return null;
-  }
-  if (!response.ok) return null;
-
-  let payload;
-  try {
-    payload = await response.json();
+    buckets = await fetchAnthropicPages(url);
   } catch (err) {
     return null;
   }
 
-  let minorUnits = 0; // amounts are decimal strings in the lowest currency unit (cents)
+  let minorUnits = 0; // decimal strings in the lowest currency unit (cents)
   let currency = 'USD';
-  const buckets = Array.isArray(payload.data) ? payload.data : [];
   buckets.forEach(function (bucket) {
     (bucket.results || []).forEach(function (r) {
       const amount = parseFloat(r.amount);
@@ -204,6 +204,40 @@ async function fetchAnthropicCost(range) {
   return { amount: minorUnits / 100, currency: currency };
 }
 
+/**
+ * Credit balance. Neither Anthropic nor OpenAI exposes a prepaid-balance API, so
+ * the balance is: AI_CREDIT_TOTAL (credits purchased/granted, set by the user)
+ * minus overall provider-reported spend since AI_CREDIT_START (optional date).
+ * Returns { configured:false } when AI_CREDIT_TOTAL is not set.
+ */
+async function fetchBalance(appTrackedCost) {
+  const total = parseFloat(process.env.AI_CREDIT_TOTAL);
+  if (!isFinite(total)) {
+    return { configured: false, reason: 'Set AI_CREDIT_TOTAL (credits purchased, in USD) to enable the remaining balance.' };
+  }
+  const startRaw = process.env.AI_CREDIT_START;
+  const start = startRaw && !isNaN(new Date(startRaw)) ? new Date(startRaw)
+    : new Date(Date.now() - 365 * 86400000);
+
+  let spent = null;
+  let source = null;
+  if (isEnabled() && isAnthropic()) {
+    const cost = await fetchAnthropicCost(start, new Date());
+    if (cost) { spent = cost.amount; source = 'provider-reported (overall)'; }
+  }
+  if (spent == null && appTrackedCost != null) {
+    spent = appTrackedCost;
+    source = 'application-tracked estimate (does not include other API usage)';
+  }
+  if (spent == null) {
+    return { configured: true, available: false, total: total, reason: 'Spend could not be determined.' };
+  }
+  return {
+    configured: true, available: true, total: total, spent: spent,
+    remaining: Math.max(0, total - spent), source: source,
+    since: start.toISOString(), currency: 'USD'
+  };
+}
 async function fetchOpenAICompatibleUsage(range) {
   const url = baseUrl()
     + '/organization/usage/completions'
@@ -272,4 +306,5 @@ function summarize(rows) {
   return summary;
 }
 
-module.exports = { isEnabled, isAnthropic, keyLabel, scope, fetchUsage, summarize };
+module.exports = { isEnabled, isAnthropic, keyLabel, scope, fetchUsage, fetchBalance, summarize };
+

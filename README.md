@@ -32,8 +32,9 @@ rewriting the application.
   libraries and the list of simulator-supported operations.
 - **Simulation panel**: Run / Stop / Reset, virtual LED, virtual push button,
   simulated DHT11 readings and serial-style output.
-- **AI API Key Usage dashboard**: shows usage for the single configured API key,
-  distinguishing provider-reported usage from application-tracked usage.
+- **AI API Key Usage dashboard**: shows overall AI API token usage and cost as
+  reported by the provider (all API traffic, not just this app's chatbot), with
+  application-tracked usage as a fallback.
 
 Three lessons: **LED Blinking**, **Push Button** and **DHT11 Sensor**, each for
 both boards.
@@ -67,6 +68,7 @@ microcontroller-ai-lab/
 │   │   ├── controllers/
 │   │   ├── services/ (ai, circuit, usage, provider-usage)
 │   │   └── middleware/ (errors, local-only)
+│   ├── data/usage.json            # app-tracked usage (git-ignored, auto-created)
 │   ├── .env.example
 │   └── package.json
 ├── .gitignore
@@ -121,7 +123,7 @@ Set these in `backend/.env`:
 | `AI_BASE_URL` | `https://api.anthropic.com/v1` |
 | `AI_MODEL` | A Claude model your key can access (e.g. `claude-sonnet-4-5`) |
 | `AI_TIMEOUT_MS` | Request timeout |
-| `AI_MAX_TOKENS` | `max_tokens` (required by the Messages API) |
+| `AI_MAX_TOKENS` | Per-request `max_tokens` cap (required by the Messages API); not a usage counter |
 | `AI_TEMPERATURE` | Usually leave blank: the newest Claude models reject `temperature` |
 
 If `AI_API_KEY` is missing, AI endpoints return a clear `AI_NOT_CONFIGURED`
@@ -137,31 +139,57 @@ right request/response format automatically.
 
 ## 5. AI API Key Usage dashboard
 
-Open **AI API Key Usage** in the top navigation bar. The dashboard reports usage
-for the single key configured in `backend/.env`.
+Open **AI API Key Usage** in the top navigation bar. The dashboard reports
+**overall AI API usage**: every request made against the provider account
+(other apps, scripts, the Console and this app's chatbot, code generation and
+troubleshooting), not just this application's chatbot traffic.
 
-- With Anthropic, enable the optional **Admin Usage & Cost API** by setting
-  `AI_USAGE_API_ENABLED=true` and `AI_USAGE_API_KEY` to a **separate Admin API
-  key** (`sk-ant-admin...`). The backend then calls
-  `GET /v1/organizations/usage_report/messages` and
-  `GET /v1/organizations/cost_report` and shows provider-reported token and cost
-  figures.
-- Anthropic reports these at **organization level**, not scoped to one API key —
-  the dashboard labels this scope accurately.
-- If the Admin API is not enabled (or the key is not admin-scoped), the
-  dashboard shows **application-tracked usage** — metadata recorded by this
-  backend while using the configured key (timestamp, model, feature, token
-  counts returned by the AI response, status, duration). It does **not** store
-  API keys, authorization headers, prompts or personal content.
-- The two sources are never summed into one total unless the scope is verified.
-- The full key is never displayed — only a masked suffix (or `Not configured`).
+**Primary source: provider-reported usage (overall).** Enable the optional
+Anthropic **Admin Usage & Cost API** by setting `AI_USAGE_API_ENABLED=true` and
+`AI_USAGE_API_KEY` to a **separate Admin API key** (`sk-ant-admin...`). The
+backend then calls:
+
+- `GET /v1/organizations/usage_report/messages` (daily buckets grouped by model;
+  input tokens include uncached, cache-read and cache-creation tokens)
+- `GET /v1/organizations/cost_report` (amounts converted from cents to USD)
+
+OpenAI-compatible providers use `/organization/usage/completions`. Anthropic
+reports usage at **organization level**, not per API key, and the dashboard
+labels the scope accordingly. When provider data is available, the cards,
+charts and details table use it ("Provider-reported (authoritative)").
+
+**Fallback: application-tracked usage.** If the Admin API is not enabled (or the
+key is not admin-scoped), the dashboard falls back to usage recorded by this
+backend. Every AI call (`explain`, `generate-code`, `troubleshoot`) goes through
+`ai.service.js`, which records timestamp, model, feature, input/output/total
+tokens from the provider response, status and duration to
+`backend/data/usage.json` (git-ignored, last 5000 records). This only covers
+calls made through this app, so it is a subset of overall usage. Failed calls
+are recorded without tokens. Prompts, API keys and authorization headers are
+never stored. Cost in this mode is an estimate from built-in per-model rates.
+
+**Total amount and remaining balance.** The dashboard shows total spend (the
+provider's cost report for overall usage, paginated across the full range) and a
+credit balance. No provider exposes a prepaid-balance API, so the balance is
+computed: `AI_CREDIT_TOTAL` (credits purchased, USD) minus overall spend since
+`AI_CREDIT_START` (optional ISO date). Without the Admin API it uses the
+app-tracked estimate and labels it as such. If `AI_CREDIT_TOTAL` is unset the
+balance shows "Not available".
+
+Other behaviour:
+
+- The two sources are never summed; the dashboard shows one source at a time
+  and states which.
+- The full key is never displayed, only a masked suffix (or `Not configured`).
 - Missing metrics show `Unavailable from provider` / `Not provided`; nothing is
   invented.
+- `AI_MAX_TOKENS` is only the per-request `max_tokens` cap, not a usage counter.
 
 Related environment variables: `AI_USAGE_API_ENABLED`, `AI_USAGE_API_KEY`,
-`AI_USAGE_BASE_URL`, `AI_USAGE_SCOPE`, `USAGE_LOCALHOST_ONLY`. Usage endpoints
-are restricted to localhost by default; add authentication before any public
-deployment.
+`AI_USAGE_BASE_URL`, `AI_USAGE_SCOPE` (`account` or `key`), `AI_CREDIT_TOTAL`,
+`AI_CREDIT_START`,
+`USAGE_LOCALHOST_ONLY`. Usage endpoints are restricted to localhost by default;
+add authentication before any public deployment.
 
 ---
 
@@ -252,9 +280,9 @@ unsupported code ran. All output is clearly labelled as simulated.
 | POST | `/api/ai/generate-code` | Generate board-compatible code |
 | POST | `/api/ai/troubleshoot` | Diagnose errors from real circuit data |
 | POST | `/api/circuit/validate` | Deterministic board-specific validation |
-| GET | `/api/usage/status` | Usage retrieval configuration and availability |
-| GET | `/api/usage/summary` | Usage summary for the configured key scope |
-| GET | `/api/usage/details` | Detailed / time-bucketed usage |
+| GET | `/api/usage/status` | Usage source configuration and availability (localhost-only) |
+| GET | `/api/usage/summary` | Provider-reported overall usage and app-tracked usage, kept separate |
+| GET | `/api/usage/details` | Provider per-period rows, or app-tracked rows as fallback |
 
 AI request bodies are validated for size and shape, provider calls use
 timeouts, and rate-limit/timeouts/provider errors map to clear messages.

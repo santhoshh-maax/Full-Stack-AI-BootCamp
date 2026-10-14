@@ -1,4 +1,4 @@
-/*
+﻿/*
  * circuit-validator.js
  * Deterministic circuit validation. No AI, no guessing: this module decides
  * whether a circuit passes or fails for the selected board and lesson.
@@ -261,19 +261,36 @@
     function validateLedStage() {
       var leds = state.components.filter(function (c) { return c.type === 'led'; });
       if (leds.length === 0) return null;
-      if (leds.length > 1) {
-        warn('MULTIPLE_LEDS', 'More than one LED is present; only the first is simulated.');
+      info.leds = [];
+      var first = null;
+      leds.forEach(function (led, idx) {
+        var pin = validateSingleLed(led, leds.length > 1 ? ' (' + led.id + ')' : '');
+        if (pin) {
+          info.leds.push({
+            id: led.id, pin: pin.pin, topology: pin.topology, resistor: pin.resistor
+          });
+          if (!first) first = pin;
+        }
+      });
+      if (first) {
+        info.pins.outputPin = first.pin;
+        info.topology = first.topology;
+        info.resistor = first.resistor;
       }
-      var led = leds[0];
+      info.pins.outputPins = info.leds.map(function (l) { return l.pin; });
+      return first ? first.pin : null;
+    }
+
+    function validateSingleLed(led, tag) {
       var anodeNet = defs.netOf(ref(led.id, 'anode'));
       var cathodeNet = defs.netOf(ref(led.id, 'cathode'));
 
       if (anodeNet === cathodeNet) {
-        err('LED_SHORT', 'The LED anode and cathode are connected to the same net.');
+        err('LED_SHORT', 'The LED' + tag + ' anode and cathode are connected to the same net.');
         return null;
       }
       if (anodeNet === gndNet) {
-        err('LED_REVERSED', 'The LED anode is connected to ground. Reverse the LED polarity.');
+        err('LED_REVERSED', 'The LED' + tag + ' anode is connected to ground. Reverse the LED polarity.');
         return null;
       }
 
@@ -305,24 +322,23 @@
 
       if (digitalPinsOnNet(cathodeNet).length > 0) {
         err('LED_REVERSED',
-          'The LED cathode is connected to a GPIO pin. The cathode must go to ground.');
+          'The LED' + tag + ' cathode is connected to a GPIO pin. The cathode must go to ground.');
         return null;
       }
 
       if (!chosenOutput) {
         if (cathodeNet !== gndNet) {
-          err('LED_NO_GROUND', 'The LED cathode does not return to a ground pin.');
+          err('LED_NO_GROUND', 'The LED' + tag + ' cathode does not return to a ground pin.');
         } else {
-          err('LED_NO_GPIO', 'The LED anode is not connected to a GPIO output pin.');
+          err('LED_NO_GPIO', 'The LED' + tag + ' anode is not connected to a GPIO output pin.');
         }
         return null;
       }
 
       if (topology === 'direct') {
         err('LED_NO_RESISTOR',
-          'The LED is connected directly to the GPIO with no current-limiting resistor.');
+          'The LED' + tag + ' is connected directly to the GPIO with no current-limiting resistor.');
       } else {
-        info.resistor = seriesResistor;
         var rv = resistorValue(seriesResistor);
         if (isNaN(rv)) {
           warn('RESISTOR_VALUE', 'The series resistor has no usable resistance value.');
@@ -335,9 +351,7 @@
         }
       }
 
-      info.pins.outputPin = chosenOutput;
-      info.topology = topology;
-      return chosenOutput;
+      return { pin: chosenOutput, topology: topology, resistor: seriesResistor };
     }
 
     // ---- Button stage --------------------------------------------
@@ -463,3 +477,4 @@
     global.CircuitValidator = api;
   }
 })(typeof window !== 'undefined' ? window : this);
+
