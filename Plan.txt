@@ -1,0 +1,670 @@
+# Project Prompt: Microcontroller AI Lab — AI-Powered Interactive Electronics Learning Platform
+
+## 1. Project Overview
+
+Build a complete, working full-stack web application called **Microcontroller AI Lab**.
+
+The application is an interactive educational platform that helps beginners learn microcontrollers, electronics, circuit connections, embedded programming and basic hardware simulation through a guided, AI-powered learning experience.
+
+The application must not be limited to ESP32. It must support multiple microcontroller development boards, starting with:
+
+1. **ESP32 DevKit** — Wi-Fi/Bluetooth-capable microcontroller board.
+2. **Arduino Uno R3** — beginner-friendly ATmega328P-based development board.
+
+Design the application architecture so additional boards can be introduced later without rewriting the entire application.
+
+Students should be able to select a microcontroller board, choose a lesson, drag and drop components into a virtual workspace, connect component pins, receive AI-powered explanations, generate board-compatible code, validate circuit connections and simulate supported behavior directly in the browser.
+
+The application must function as an interactive electronics tutor rather than a static tutorial website or a standalone chatbot.
+
+## 2. Technology Stack
+
+### Frontend
+- HTML5
+- CSS3
+- Vanilla JavaScript
+- SVG or HTML5 Canvas for the interactive circuit builder
+- Responsive layout suitable for desktop and laptop screens
+- No frontend framework is required
+
+### Backend
+- Node.js
+- Express.js
+- REST API endpoints
+- dotenv for environment variables
+- Backend-side request validation and error handling
+
+### AI Integration
+- Use the authorized AI API provided for the bootcamp.
+- All AI requests must pass through the Node.js backend.
+- Store API credentials in backend environment variables.
+- Never expose API keys in browser code, frontend configuration, logs or public repositories.
+- Do not download or host the complete AI model locally.
+- Keep the AI provider integration in a separate service module.
+- Do not assume a specific AI provider unless its details are supplied.
+
+### Simulation
+- Build a lightweight JavaScript simulation engine.
+- Implement deterministic validation rules for supported boards and circuits.
+- Simulate supported digital inputs and outputs in the browser.
+- Clearly distinguish simulated behavior from physical hardware execution.
+- Do not use eval() or unrestricted dynamic code execution for AI-generated programs.
+- Do not claim to compile or execute arbitrary microcontroller firmware.
+
+### Storage
+A database is optional for the first prototype. Keep circuits, component positions and simulation state in browser memory. Add persistent storage only if required later.
+
+## 3. Supported Microcontroller Boards
+
+Implement a board-selection system.
+
+### Board A: ESP32 DevKit
+
+Display:
+- Board name and illustration.
+- GPIO pins and supported capabilities.
+- Digital input/output capabilities.
+- ADC and PWM capabilities where supported by the selected model.
+- Ground and power pins.
+- Board-specific pin restrictions.
+- A board-compatible Arduino-style code example.
+
+Use the exact ESP32 variant as a configuration parameter when relevant. Do not assume all ESP32 models have identical pins or capabilities.
+
+### Board B: Arduino Uno R3
+
+Display:
+- Board name and illustration.
+- Digital pins D0–D13.
+- Analog input pins A0–A5.
+- PWM-capable pins.
+- 5V, 3.3V where available, GND and other relevant pins.
+- Board-specific pin restrictions.
+- An Arduino Uno-compatible code example.
+
+Respect the electrical characteristics of the ATmega328P-based Arduino Uno R3. Do not treat its pins as interchangeable with ESP32 pins.
+
+### Board Configuration Architecture
+
+Create a central board registry rather than hardcoding board details in individual lessons.
+
+Example:
+
+```js
+const boardRegistry = {
+  "arduino-uno-r3": {
+    id: "arduino-uno-r3",
+    name: "Arduino Uno R3",
+    platform: "AVR",
+    logicVoltage: 5,
+    digitalPins: [
+      "D0", "D1", "D2", "D3", "D4", "D5",
+      "D6", "D7", "D8", "D9", "D10",
+      "D11", "D12", "D13"
+    ],
+    analogPins: ["A0", "A1", "A2", "A3", "A4", "A5"],
+    pwmPins: ["D3", "D5", "D6", "D9", "D10", "D11"]
+  },
+
+  "esp32-devkit": {
+    id: "esp32-devkit",
+    name: "ESP32 DevKit",
+    platform: "ESP32",
+    logicVoltage: 3.3,
+    digitalPins: [],
+    analogPins: [],
+    pwmPins: []
+  }
+};
+```
+
+The ESP32 pin arrays above must be populated from the exact selected board variant and its verified capabilities before the board is treated as fully configured. Do not mark a pin as supported merely because it appears in a generic example.
+
+Use the registry to determine:
+- Available pins.
+- Supported pin modes.
+- Analog input capabilities.
+- PWM support.
+- Logic voltage.
+- Pin restrictions.
+- Compatible code generation settings.
+- Validation rules.
+
+When a student changes the selected board, update the available pins, wiring rules, code generation context and simulator configuration.
+
+## 4. Application Interface
+
+Build a clean, professional engineering learning interface with a white background, blue accents, neutral borders and readable typography.
+
+### A. Navigation Bar
+
+Include:
+- Application name: Microcontroller AI Lab.
+- Board selector.
+- Lesson selector.
+- Current lesson progress.
+- Simulation status.
+
+### B. Component Library
+
+Provide draggable components:
+- ESP32 DevKit.
+- Arduino Uno R3.
+- LED.
+- Resistor.
+- Push button.
+- DHT11 temperature and humidity sensor.
+- Connecting wires.
+- Ground and supported connection points.
+
+Microcontroller boards should be selectable as the active board. The workspace should prevent incompatible board configurations from being used in the same circuit unless multi-board circuits are explicitly supported.
+
+Each component must have a name, visual representation, pins and relevant properties.
+
+### C. Circuit Workspace
+
+Implement a working drag-and-drop workspace using SVG or Canvas.
+
+Required features:
+- Place components.
+- Move components.
+- Display component pins.
+- Create connections between pins.
+- Draw visible wires.
+- Select and remove wires.
+- Delete components.
+- Clear the workspace.
+- Validate the circuit.
+- Display validation errors and warnings.
+- Keep component positions and connections in a shared JavaScript data model.
+
+Pin labels and available connections must change according to the selected board.
+
+### D. AI Electronics Tutor
+
+Add a conversational assistant that helps students understand electronics and embedded programming.
+
+The AI must be aware of:
+- Selected microcontroller board.
+- Selected lesson.
+- Component configuration.
+- Circuit connections.
+- Circuit validation results.
+- Supported simulation capabilities.
+- Student's question.
+
+Example questions:
+- How do I connect an LED to Arduino Uno?
+- How do I connect an LED to ESP32?
+- What is the difference between Arduino Uno and ESP32?
+- Why does an LED need a resistor?
+- What is a GPIO pin?
+- Why does this board use different voltage levels?
+- Explain my generated code.
+- Why is my circuit not working?
+
+The assistant should explain concepts in beginner-friendly language, provide steps, explain component functions and identify missing information instead of inventing circuit details.
+
+### E. Code Editor
+
+Provide:
+- Board-compatible Arduino-style code.
+- A Generate Code button.
+- A Copy Code button.
+- Editable code text.
+- Code explanations.
+- Required library information.
+- A clear list of simulator-supported operations.
+
+When the student switches boards, regenerate or adapt the code for the selected board. Do not reuse board-specific pin numbers without checking their compatibility.
+
+### F. Simulation Panel
+
+Provide:
+- Run.
+- Stop.
+- Reset.
+- Virtual LED output.
+- Virtual button controls.
+- Simulated sensor readings.
+- Serial-style output where appropriate.
+- Circuit validation status.
+- Useful simulation errors.
+
+Only start a simulation after the corresponding circuit and supported program settings pass validation.
+
+## 5. Initial Learning Lessons
+
+Implement three lessons for the first version.
+
+### Lesson 1: LED Blinking
+
+Supported boards:
+- Arduino Uno R3.
+- ESP32 DevKit.
+
+Components:
+- Selected microcontroller board.
+- LED.
+- Current-limiting resistor.
+- Connecting wires.
+
+Workflow:
+1. Select a board.
+2. Choose the LED blinking lesson.
+3. Learn about GPIO pins, LEDs, resistors and ground.
+4. Drag components into the workspace.
+5. Connect the GPIO, resistor, LED and ground.
+6. Validate the circuit using board-specific rules.
+7. Ask the AI assistant for explanations.
+8. Generate code for the selected board.
+9. Simulate the blinking LED.
+10. Change the supported blink interval and observe the output.
+
+For Arduino Uno R3, an example GPIO is D8. For a compatible ESP32 DevKit, GPIO2 may be used as an example if supported by the specific board configuration.
+
+These are example configurations, not universal pin assignments. The application must generate code using the actual selected GPIO.
+
+Example Arduino Uno-style code:
+
+```cpp
+const int LED_PIN = 8;
+
+void setup() {
+  pinMode(LED_PIN, OUTPUT);
+}
+
+void loop() {
+  digitalWrite(LED_PIN, HIGH);
+  delay(500);
+
+  digitalWrite(LED_PIN, LOW);
+  delay(500);
+}
+```
+
+The code generator should adapt the pin configuration for the selected board.
+
+### Lesson 2: Push Button
+
+Supported boards:
+- Arduino Uno R3.
+- ESP32 DevKit.
+
+Components:
+- Selected microcontroller board.
+- Push button.
+- LED.
+- Current-limiting resistor.
+- Connecting wires.
+
+Workflow:
+1. Explain digital inputs and outputs.
+2. Guide the student through wiring the button.
+3. Configure a suitable pull-up or pull-down arrangement.
+4. Validate the circuit.
+5. Generate compatible code.
+6. Display a virtual button.
+7. Simulate pressed and released states.
+8. Update the virtual LED according to the lesson's logic.
+
+Where appropriate, use the internal pull-up functionality supported by the selected board and explain the input logic to the student.
+
+### Lesson 3: DHT11 Sensor
+
+Supported boards:
+- Arduino Uno R3.
+- ESP32 DevKit.
+
+Components:
+- Selected microcontroller board.
+- DHT11-style temperature and humidity sensor.
+- Connecting wires.
+
+Workflow:
+1. Explain temperature and humidity sensing.
+2. Show the sensor pin functions.
+3. Guide the student through compatible power, ground and data connections.
+4. Validate the wiring and board compatibility.
+5. Generate example code using an appropriate sensor library.
+6. Explain how the data is read.
+7. Display simulated temperature and humidity values.
+8. Let the student change sample values.
+9. Explain the difference between simulated readings and real sensor measurements.
+
+The simulator may use sample readings, such as 28°C and 65% relative humidity. Clearly label them as simulated.
+
+Verify voltage and wiring requirements for the selected board and sensor module. Do not assume every sensor breakout has identical electrical requirements.
+
+## 6. Circuit Data Model
+
+Use a common data model for all boards and lessons.
+
+Example:
+
+```js
+const circuit = {
+  board: "arduino-uno-r3",
+  lesson: "led",
+
+  components: [
+    {
+      id: "board-1",
+      type: "arduino-uno-r3",
+      x: 80,
+      y: 100
+    },
+    {
+      id: "led-1",
+      type: "led",
+      x: 320,
+      y: 120
+    },
+    {
+      id: "resistor-1",
+      type: "resistor",
+      x: 240,
+      y: 120,
+      resistance: 220
+    }
+  ],
+
+  connections: [
+    {
+      from: "board-1.D8",
+      to: "resistor-1.pin1"
+    },
+    {
+      from: "resistor-1.pin2",
+      to: "led-1.anode"
+    },
+    {
+      from: "led-1.cathode",
+      to: "board-1.GND"
+    }
+  ]
+};
+```
+
+This is an example data structure, not an automatic declaration that the circuit is valid.
+
+The circuit validator must verify pin availability, component polarity, current-limiting resistance, ground return, supported voltage levels and board-specific rules.
+
+Keep board configuration separate from component rendering and simulation logic.
+
+## 7. Circuit Validation
+
+Implement deterministic JavaScript validation.
+
+For every circuit:
+- Verify the selected board is configured.
+- Verify required components are present.
+- Verify connected pins exist on the selected board.
+- Check that connections use compatible pin types.
+- Check lesson-specific wiring rules.
+- Check LED polarity and current-limiting resistance.
+- Check ground and power connections.
+- Check that the generated program uses the configured pins.
+- Reject unsupported connections and board configurations.
+
+For push buttons:
+- Verify the input pin is supported.
+- Verify the required pull-up or pull-down arrangement.
+- Verify the LED output circuit.
+
+For DHT11:
+- Verify power, ground and data connections.
+- Verify the data pin and voltage requirements for the selected configuration.
+
+Return meaningful errors and warnings. AI can explain these errors, but the deterministic validator must determine whether a circuit passes.
+
+## 8. Simulation Engine
+
+Implement a lightweight custom JavaScript simulator.
+
+### LED
+- Simulate HIGH and LOW output states.
+- Animate blinking using the supported program configuration.
+- Use the selected board's configured pins.
+- Stop timers when the simulation stops, resets or changes lessons.
+
+### Push Button
+- Provide a clickable virtual button.
+- Update the simulated digital input.
+- Apply the defined lesson logic to control the LED.
+
+### DHT11
+- Display simulated temperature and humidity.
+- Allow sample values to be changed within defined ranges.
+- Update the output panel.
+- Clearly mark readings as simulated.
+
+### Code compatibility
+
+For the initial prototype, support a small documented subset of Arduino-style operations, such as pinMode(), digitalWrite() and delay() for the LED lesson.
+
+Use a safe parser or validated structured program representation. Do not execute arbitrary generated code.
+
+If code contains unsupported instructions, explain that the current simulator cannot run them instead of pretending that execution succeeded.
+
+Do not describe the application as a complete electrical simulator, compiler or firmware emulator.
+
+## 9. Backend API Endpoints
+
+Implement the following endpoints:
+
+- `GET /api/health` — check backend status.
+- `GET /api/boards` — return configured boards and capabilities.
+- `POST /api/ai/explain` — explain components, circuits and concepts.
+- `POST /api/ai/generate-code` — generate code for the selected board and lesson.
+- `POST /api/ai/troubleshoot` — explain errors and suggest corrections.
+- `POST /api/circuit/validate` — validate board-specific circuit connections.
+
+Use a shared board registry on the backend where necessary to validate requests. Do not trust frontend-supplied pin capabilities without verifying them against the backend configuration.
+
+All AI requests must go through the authorized AI provider from the backend. Implement request validation, sensible size limits, timeouts, rate-limit handling and useful error messages.
+
+## 10. AI Assistant Requirements
+
+The backend must pass the AI model the selected board, lesson, relevant circuit data, deterministic validation results and the student's question.
+
+The AI should:
+- Explain electronics in simple language.
+- Generate board-compatible Arduino-style code.
+- Explain code line by line.
+- Identify board-specific differences.
+- Explain voltage and pin compatibility where relevant.
+- Diagnose reported problems using actual circuit data.
+- Distinguish verified facts from assumptions.
+- Avoid claiming that code was compiled, executed or tested on physical hardware unless it was.
+- Clearly identify unsupported simulator behavior.
+
+Do not allow AI output to override board capability configuration or deterministic circuit validation.
+
+## 11. Suggested Project Structure
+
+```text
+microcontroller-ai-lab/
+├── frontend/
+│   ├── index.html
+│   ├── css/
+│   │   └── styles.css
+│   ├── js/
+│   │   ├── app.js
+│   │   ├── board-registry.js
+│   │   ├── components.js
+│   │   ├── canvas.js
+│   │   ├── wires.js
+│   │   ├── circuit-validator.js
+│   │   ├── simulator.js
+│   │   ├── code-editor.js
+│   │   └── ai-client.js
+│   └── assets/
+├── backend/
+│   ├── src/
+│   │   ├── server.js
+│   │   ├── routes/
+│   │   ├── controllers/
+│   │   ├── services/
+│   │   ├── config/
+│   │   │   └── board-registry.js
+│   │   └── middleware/
+│   ├── .env.example
+│   └── package.json
+├── .gitignore
+└── README.md
+```
+
+Keep the implementation practical. Do not create empty modules or unnecessary abstractions before the core workflow works.
+
+##12. Flow
+
+1. Create the frontend layout and lesson selector.
+2. Implement the board selector for Arduino Uno R3 and ESP32 DevKit.
+3. Build the component palette and circuit workspace.
+4. Implement dragging, pin selection and wire drawing.
+5. Create the board registry and LED circuit validator.
+6. Set up the Express backend.
+7. Integrate the authorized AI API for explanations and code generation.
+8. Complete LED simulation for both configured boards.
+9. Verify board-specific code generation.
+10. Implement push-button simulation.
+11. Implement DHT11 sample-reading simulation.
+12. Integrate AI troubleshooting.
+13. Test invalid connections and API failures.
+14. Prepare the README and demonstration.
+
+Prioritize one fully functional LED lesson for both boards before expanding the other lessons.
+
+## 13. Acceptance Criteria
+
+The final prototype must demonstrate:
+1. A functional full-stack web application.
+2. Arduino Uno R3 and ESP32 DevKit selection.
+3. Board-specific pins and wiring validation.
+4. A working drag-and-drop circuit workspace.
+5. Interactive wires and component pins.
+6. AI-powered electronics explanations.
+7. AI-generated board-compatible Arduino-style code.
+8. A simulated blinking LED.
+9. A virtual push button controlling a simulated output.
+10. Simulated DHT11 readings.
+11. Clear validation errors and useful AI troubleshooting.
+12. Secure backend handling of AI credentials.
+13. Clear distinction between simulated behavior and physical hardware execution.
+14. A codebase that a student can explain during faculty evaluation.
+
+## 14. Implementation Instructions
+
+Implement the application incrementally, providing complete working code and exact file paths.
+
+First build the UI and board selector. Then implement the circuit model, workspace, validation and LED simulation. Next add the Express backend and AI integration. Finally implement the push-button and DHT11 lessons, testing each stage before proceeding.
+
+Do not generate only static mockups. Do not use fake functionality, hardcoded successful validation or fabricated AI responses as if they came from a real AI service. If an API credential is unavailable, provide a clearly labelled setup step and a useful error state.
+
+**Final objective:** Deliver a working Microcontroller AI Lab where students can learn basic electronics using Arduino Uno R3 and ESP32 DevKit, build virtual circuits, receive contextual AI assistance, generate understandable embedded code and simulate supported outputs in the browser. The architecture must allow additional microcontroller boards to be added in the future.
+## 15. AI API Key Usage Dashboard
+
+### Objective
+
+Add an **AI API Key Usage** item to the Microcontroller AI Lab interface. When the owner clicks it, open a dashboard showing usage information for the **specific AI API key configured for this application in the backend environment variables**.
+
+This dashboard is for monitoring the configured API key, not for combining usage from unrelated API keys or displaying general application analytics.
+
+### A. Usage Source and Accuracy
+
+- Use the AI provider's official usage or billing API if it supports usage information for the configured API key or the account/project associated with that key.
+- Use the same provider configuration and credentials that the application uses for AI requests. Do not request the API key from the frontend.
+- If the provider does not expose usage scoped to an individual API key, clearly explain this limitation. In that case, track requests made by this application using the configured key and label the figures **Application-tracked usage for this configured key**. Do not claim that these figures include usage from other applications using the same key.
+- Never invent token counts, costs, quotas, limits, or billing details.
+- If the provider's usage API is unavailable or the configured provider does not support the requested metric, show **Unavailable from provider** and explain what can be tracked locally.
+- Keep provider-specific usage retrieval in a separate backend service module. Do not assume all AI providers expose the same usage endpoints or response fields.
+
+### B. Dashboard Interface
+
+Add an **AI API Key Usage** navigation item to the application. Clicking it opens a dedicated dashboard with a Back to Lab control.
+
+Show these metrics when the provider supplies them:
+1. Total input/prompt tokens.
+2. Total output/completion tokens.
+3. Total tokens.
+4. Number of API requests.
+5. Successful and failed requests, where available.
+6. Model name(s) associated with the configured key.
+7. Usage period and last-updated timestamp.
+8. Estimated cost or provider-reported cost, only when available and clearly identified.
+
+Display the configured key using a safe label such as `Configured API key` or a masked suffix if the application can obtain that suffix safely. **Never display the complete API key.** Do not send the key to the frontend.
+
+### C. Filters and Usage Details
+
+Where the provider's API supports these dimensions, allow the owner to filter usage by:
+- Today.
+- Last 7 days.
+- Last 30 days.
+- A custom date range.
+- Model.
+
+Show a detailed table with available fields such as timestamp or reporting period, model, input tokens, output tokens, total tokens, request count and cost. Do not promise per-request details if the provider only returns aggregated usage.
+
+Clearly distinguish:
+- **Provider-reported key/account usage:** usage retrieved from the official provider API. If the provider reports account/project-level rather than key-level usage, label it accurately.
+- **Application-tracked usage:** requests recorded by this Microcontroller AI Lab backend while using its configured key.
+
+Do not combine these two sources into one total unless the calculation is valid and the dashboard explains the scope.
+
+### D. Backend Requirements
+
+Implement suitable endpoints, adapting them to the selected AI provider:
+- `GET /api/usage/summary` — return usage summary for the configured provider/key scope.
+- `GET /api/usage/details` — return detailed or time-bucketed usage when supported.
+- `GET /api/usage/status` — report whether provider usage retrieval is configured and available.
+
+The backend must:
+- Read credentials from environment variables.
+- Call only documented provider usage endpoints.
+- Validate date filters and other query parameters.
+- Handle missing permissions, unsupported endpoints, rate limits, timeouts and provider errors.
+- Keep provider credentials and authorization headers out of API responses and logs.
+- Protect usage endpoints from unauthorized access. For a local bootcamp prototype, restrict access to local development and document that authentication/access control is required before public deployment.
+
+If the provider does not offer key-scoped usage data, optionally maintain local records of the AI requests made by this application. Record only metadata needed for usage tracking, such as timestamp, model, feature, token counts returned by the AI response, status and duration. Do not store API keys, authorization headers, full prompts or unnecessary personal content.
+
+### E. Cost and Limits
+
+- Show cost only when reliable provider-reported cost data or verified pricing configuration is available.
+- Label locally calculated costs as estimates.
+- Do not present application-side request limits as the provider's account-wide quota.
+- Display quota or remaining balance only if the provider's documented API actually supplies it.
+- If no quota, balance or cost information is available, show **Not provided by the configured AI provider** rather than guessing.
+
+### F. Frontend and Project Structure
+
+Add a usage-dashboard module, for example:
+
+```text
+frontend/
+└── js/
+    └── usage-dashboard.js
+
+backend/
+└── src/
+    ├── routes/
+    │   └── usage.routes.js
+    └── services/
+        └── usage.service.js
+```
+
+Keep the implementation compatible with the existing HTML, CSS, vanilla JavaScript, Node.js and Express architecture. Do not add a database unless it is needed for application-tracked usage history.
+
+### G. Acceptance Criteria
+
+1. The dashboard monitors the configured AI API key's usage scope as accurately as the provider allows.
+2. It uses official provider usage APIs when available.
+3. It clearly identifies whether the figures are key-level, account/project-level or application-tracked.
+4. It displays available token and request metrics without inventing missing values.
+5. It never exposes the complete API key or provider credentials.
+6. It handles unsupported provider APIs and permission errors with clear messages.
+7. It integrates with the existing Microcontroller AI Lab without breaking its board selector, circuit builder, AI tutor, code generation, validation or simulation features.
+
+**Final requirement:** Show only usage relevant to the AI API key configured for this project. Do not show usage from unrelated keys. If the provider cannot report usage for that exact key, state the limitation and show only the requests this application can reliably track using that configured key.

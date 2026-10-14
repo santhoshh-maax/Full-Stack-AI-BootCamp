@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Microcontroller AI Lab</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">M</div>
+    <div class="brand-text">
+      <strong>Microcontroller AI Lab</strong>
+      <span>Interactive electronics &amp; embedded learning</span>
+    </div>
+  </div>
+
+  <div class="nav-controls">
+    <label class="nav-field">
+      <span>Board</span>
+      <select id="boardSelect"></select>
+    </label>
+    <label class="nav-field">
+      <span>Lesson</span>
+      <select id="lessonSelect"></select>
+    </label>
+    <div class="nav-stat">
+      <span class="nav-stat-label">Progress</span>
+      <span id="lessonProgress" class="nav-stat-value">Lesson 1 of 3</span>
+    </div>
+    <div class="nav-status">
+      <span id="validationBadge" class="badge neutral">Not validated</span>
+      <span id="simBadge" class="badge neutral">Sim: stopped</span>
+    </div>
+  </div>
+
+  <div class="nav-actions">
+    <button id="btnOpenUsage" class="btn ghost" type="button">AI API Key Usage</button>
+  </div>
+</header>
+
+<main id="labView" class="lab-grid">
+
+  <!-- Left column: palette + info -->
+  <aside class="panel left-column">
+    <section class="card">
+      <h2 class="card-title">Component Library</h2>
+      <p class="muted small">Drag a part onto the workspace, or click to add it.</p>
+      <div id="componentPalette" class="palette"></div>
+    </section>
+
+    <section class="card">
+      <h2 class="card-title">Selected Board</h2>
+      <div id="boardInfo" class="info"></div>
+    </section>
+
+    <section class="card">
+      <h2 class="card-title">Lesson</h2>
+      <div id="lessonInfo" class="info"></div>
+    </section>
+  </aside>
+
+  <!-- Center: workspace -->
+  <section class="panel workspace-panel">
+    <div class="workspace-toolbar">
+      <button id="btnValidate" class="btn primary" type="button">Validate Circuit</button>
+      <button id="btnDelete" class="btn" type="button">Delete Selected</button>
+      <button id="btnClear" class="btn danger" type="button">Clear Workspace</button>
+      <div class="spacer"></div>
+      <label class="inline-field">
+        <span>Blink interval (ms)</span>
+        <input id="blinkInterval" type="number" min="50" step="50" value="500">
+      </label>
+    </div>
+    <div class="workspace-wrap">
+      <svg id="workspaceSvg" class="workspace" role="img"
+           aria-label="Circuit workspace"></svg>
+    </div>
+    <div class="workspace-footer">
+      <div id="workspaceStatus" class="workspace-status"></div>
+      <div id="validationPanel" class="validation-panel">
+        <p class="muted">Validate the circuit to see board-specific errors and warnings.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Right: side panel with tabs -->
+  <aside class="panel right-column">
+    <div class="tabs">
+      <button class="tab active" data-tab="tab-tutor" type="button">AI Tutor</button>
+      <button class="tab" data-tab="tab-code" type="button">Code</button>
+      <button class="tab" data-tab="tab-sim" type="button">Simulation</button>
+    </div>
+
+    <!-- AI Tutor -->
+    <section id="tab-tutor" class="tab-panel active">
+      <div class="chat-toolbar">
+        <button id="btnChatCode" class="chip action" type="button">Generate code</button>
+        <button id="btnChatTroubleshoot" class="chip action" type="button">Troubleshoot</button>
+      </div>
+      <div id="chatMessages" class="chat-messages"></div>
+      <div id="chatSuggestions" class="chat-suggestions"></div>
+      <div class="chat-input">
+        <textarea id="chatInput" rows="2"
+          placeholder="Ask about GPIO, LEDs, resistors, voltage or your wiring..."></textarea>
+        <button id="btnChatSend" class="btn primary" type="button">Send</button>
+      </div>
+    </section>
+
+    <!-- Code -->
+    <section id="tab-code" class="tab-panel">
+      <div class="chat-toolbar">
+        <button id="btnGenerateCode" class="btn primary" type="button">Generate Code</button>
+        <button id="btnCopyCode" class="btn" type="button">Copy Code</button>
+      </div>
+      <textarea id="codeOutput" class="code-output" spellcheck="false"
+        placeholder="Generated board-compatible code appears here..."></textarea>
+      <div id="codeExplain" class="info code-explain"></div>
+      <div id="codeLibraries" class="info"></div>
+      <div id="codeSupport" class="info"></div>
+    </section>
+
+    <!-- Simulation -->
+    <section id="tab-sim" class="tab-panel">
+      <div class="sim-toolbar">
+        <button id="btnSimRun" class="btn primary" type="button">Run</button>
+        <button id="btnSimStop" class="btn" type="button">Stop</button>
+        <button id="btnSimReset" class="btn" type="button">Reset</button>
+      </div>
+      <div id="simStatus" class="sim-status">Idle. Validate a circuit to enable simulation.</div>
+
+      <div id="ledSimPanel" class="sim-block">
+        <h4>Virtual output</h4>
+        <div class="sim-row">
+          <div id="virtualLed" class="virtual-led"></div>
+          <span class="muted small">Simulated LED output on the resolved GPIO pin</span>
+        </div>
+      </div>
+
+      <div id="buttonSimPanel" class="sim-block" style="display:none">
+        <h4>Virtual button</h4>
+        <button id="virtualButton" class="virtual-button" type="button" aria-pressed="false">
+          Press &amp; hold
+        </button>
+        <div class="muted small">Input state: <span id="buttonStateLabel">Released (HIGH)</span></div>
+      </div>
+
+      <div id="sensorPanel" class="sim-block" style="display:none">
+        <h4>Simulated DHT11 readings</h4>
+        <label class="inline-field block">
+          <span>Temperature: <b id="tempValue">28.0 &deg;C</b></span>
+          <input id="tempSlider" type="range" min="-10" max="60" step="0.5" value="28">
+        </label>
+        <label class="inline-field block">
+          <span>Humidity: <b id="humValue">65 %</b></span>
+          <input id="humSlider" type="range" min="0" max="100" step="1" value="65">
+        </label>
+        <p class="muted small">These are simulated samples, not measurements from real hardware.</p>
+      </div>
+
+      <div class="sim-block">
+        <h4>Serial output</h4>
+        <pre id="serialOutput" class="serial-output"></pre>
+      </div>
+    </section>
+  </aside>
+</main>
+
+<!-- AI API Key Usage dashboard -->
+<main id="usageView" class="usage-view">
+  <div class="usage-header">
+    <div>
+      <h1>AI API Key Usage</h1>
+      <p class="muted">Usage for the single AI API key configured in this application's
+        backend environment.</p>
+    </div>
+    <div class="usage-header-actions">
+      <button id="btnUsageRefresh" class="btn" type="button">Refresh</button>
+      <button id="btnUsageBack" class="btn primary" type="button">Back to Lab</button>
+    </div>
+  </div>
+
+  <div class="usage-controls">
+    <label class="inline-field">
+      <span>Range</span>
+      <select id="usageRange">
+        <option value="today">Today</option>
+        <option value="7d" selected>Last 7 days</option>
+        <option value="30d">Last 30 days</option>
+        <option value="custom">Custom</option>
+      </select>
+    </label>
+    <span id="usageCustom" style="display:none">
+      <label class="inline-field"><span>Start</span><input id="usageStart" type="date"></label>
+      <label class="inline-field"><span>End</span><input id="usageEnd" type="date"></label>
+    </span>
+    <label class="inline-field">
+      <span>Model</span>
+      <select id="usageModel"><option value="all">All models</option></select>
+    </label>
+    <div class="usage-key">
+      <span class="muted small">Key</span>
+      <code id="usageKeyLabel">Configured API key</code>
+    </div>
+  </div>
+
+  <div id="usageScope" class="usage-scope"></div>
+  <div id="usageStatus" class="usage-status"></div>
+  <div id="usageCards" class="usage-cards-host"></div>
+  <div id="usageTable" class="usage-table-host"></div>
+  <div class="usage-footer">
+    <p class="muted small">Updated: <span id="usageUpdated">not loaded</span></p>
+    <p class="muted small">This dashboard never displays the full API key. Usage endpoints
+      are restricted to local development; add authentication before any public
+      deployment.</p>
+  </div>
+</main>
+
+<footer class="app-footer">
+  <span>Microcontroller AI Lab &mdash; simulated in the browser.</span>
+  <span>The simulator models a small subset of behaviour and is not a compiler,
+    electrical simulator or firmware emulator. Physical hardware results may differ.</span>
+</footer>
+
+<div id="toastHost" class="toast-host"></div>
+
+<script>
+  window.API_BASE = (location.protocol === 'file:' || location.port === '5500' ||
+    location.port === '8080') ? 'http://localhost:3000' : '';
+</script>
+<script src="js/board-registry.js"></script>
+<script src="js/components.js"></script>
+<script src="js/lessons.js"></script>
+<script src="js/circuit-validator.js"></script>
+<script src="js/wires.js"></script>
+<script src="js/canvas.js"></script>
+<script src="js/simulator.js"></script>
+<script src="js/code-editor.js"></script>
+<script src="js/ai-client.js"></script>
+<script src="js/usage-dashboard.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
