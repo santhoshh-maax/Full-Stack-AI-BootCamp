@@ -100,11 +100,26 @@
   <section class="panel workspace-panel">
     <div class="workspace-toolbar">
       <button id="btnValidate" class="btn primary" type="button">Validate Circuit</button>
-      <button id="btnWireMode" class="btn wire-btn" type="button" title="Click to start connecting wires between component pins">
-        <span class="wire-btn-indicator"></span>
-        <span class="wire-btn-icon">⚡</span>
-        <span class="wire-btn-text">Connect Wire</span>
+
+      <!-- Dedicated Wire Mode ON / OFF Switch -->
+      <div class="wire-mode-switch-wrapper" id="wireModeSwitchWrapper" title="Toggle Wire Connecting Mode ON or OFF (Shortcut: W)">
+        <span class="wire-switch-title">⚡ Wire Mode:</span>
+        <div class="wire-mode-segmented" role="group" aria-label="Wire Mode Toggle">
+          <button type="button" id="btnWireModeOff" class="wire-seg-btn active" data-state="off" title="Turn OFF Wire Mode - Select & move components freely">
+            <span class="seg-dot off-dot"></span> OFF
+          </button>
+          <button type="button" id="btnWireModeOn" class="wire-seg-btn" data-state="on" title="Turn ON Wire Mode - Click pins to connect wires">
+            <span class="seg-dot on-dot"></span> ON
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Turn OFF Wire Mode Button (Visible when Wire Mode is ON) -->
+      <button id="btnExitWireMode" class="btn wire-exit-btn" type="button" style="display:none;" title="Exit Wire Mode and return to select mode (Shortcut: Esc)">
+        <span class="exit-icon">✕</span> Turn OFF Wire Mode
       </button>
+
+      <!-- Color palette shown when Wire Mode is ON -->
       <div id="wireColorPicker" class="wire-color-palette" style="display:none;" title="Select wire color">
         <span class="wire-color-label">Color:</span>
         <button type="button" class="wire-chip active" data-color="auto" title="Auto color by pin function">Auto</button>

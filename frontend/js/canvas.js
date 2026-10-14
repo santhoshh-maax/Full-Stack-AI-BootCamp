@@ -1020,13 +1020,28 @@
         }
 
         var hit = el('circle', {
-          cx: pin.x, cy: pin.y, r: 12, fill: 'transparent',
+          cx: pin.x, cy: pin.y, r: 13, fill: 'transparent',
           class: 'pin-hit' + (isWiring ? ' active-wire' : ''),
           'data-ref': ref
         });
         hit.style.cursor = isWiring ? 'crosshair' : 'pointer';
         hit.addEventListener('mousedown', function (ev) {
           ev.stopPropagation();
+          controller.pinMouseDownRef = ref;
+        });
+        hit.addEventListener('mouseup', function (ev) {
+          ev.stopPropagation();
+          if (controller.pinMouseDownRef && controller.pinMouseDownRef !== ref) {
+            // Drag-to-connect from pinMouseDownRef to this pin
+            var fromRef = controller.pinMouseDownRef;
+            controller.pinMouseDownRef = null;
+            if (!lab.pendingRef) {
+              lab.onPinClick(fromRef);
+            }
+            lab.onPinClick(ref);
+            return;
+          }
+          controller.pinMouseDownRef = null;
         });
         hit.addEventListener('click', function (ev) {
           ev.stopPropagation();
@@ -1225,11 +1240,19 @@
         zoomAt(pt, factor);
       }, { passive: false });
 
-      // 2. Mousedown for Canvas Panning
+      // 2. Mousedown for Canvas Panning & Wire Mode Cancel
       lab.svg.addEventListener('mousedown', function (ev) {
         if (ev.target === lab.svg || (ev.target.classList && ev.target.classList.contains('grid-bg'))) {
-          // If in wire mode, let wire clicks take precedence
-          if (lab.wires && lab.wires.isWireMode && lab.wires.isWireMode()) return;
+          // If in wire mode, clicking the empty background cancels any pending wire start
+          if (lab.wires && lab.wires.isWireMode && lab.wires.isWireMode()) {
+            if (lab.pendingRef) {
+              lab.pendingRef = null;
+              if (lab.wires.cancel) lab.wires.cancel();
+              lab.setStatus('Wire connection cancelled. Click a pin to start, or click [OFF] to exit.');
+              render();
+            }
+            return;
+          }
           panDragState = {
             startX: ev.clientX,
             startY: ev.clientY,
@@ -1238,6 +1261,14 @@
             hasMoved: false
           };
           lab.svg.style.cursor = 'grabbing';
+        }
+      });
+
+      // Right-click on workspace cancels/exits Wire Mode immediately
+      lab.svg.addEventListener('contextmenu', function (ev) {
+        if (lab.wires && lab.wires.isWireMode && lab.wires.isWireMode()) {
+          ev.preventDefault();
+          lab.wires.setWireMode(false);
         }
       });
 
@@ -1285,6 +1316,7 @@
 
       // 4. Mouseup
       lab.svg.addEventListener('mouseup', function () {
+        controller.pinMouseDownRef = null;
         if (lab.wires && typeof lab.wires.onSvgMouseUp === 'function') {
           lab.wires.onSvgMouseUp();
         }

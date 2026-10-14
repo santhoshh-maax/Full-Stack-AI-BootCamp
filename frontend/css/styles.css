@@ -330,7 +330,112 @@ summary { cursor: pointer; color: var(--blue-dark); font-weight: 600; font-size:
 .workspace-panel { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
 .workspace-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
 
-/* ---- Wire Connection Tool ---- */
+/* ---- Wire Mode ON / OFF Segmented Switch ---- */
+.wire-mode-switch-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1.5px solid var(--border);
+  border-radius: 9px;
+  padding: 3px 6px 3px 10px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+.wire-switch-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.2px;
+  user-select: none;
+}
+.wire-mode-segmented {
+  display: inline-flex;
+  align-items: center;
+  background: #e2e8f0;
+  border-radius: 7px;
+  padding: 2px;
+  gap: 2px;
+}
+.wire-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 5px 11px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  line-height: 1;
+}
+.wire-seg-btn:hover {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.6);
+}
+.wire-seg-btn.active[data-state="off"] {
+  background: #ffffff;
+  color: #334155;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+.wire-seg-btn.active[data-state="on"] {
+  background: #0d47a1;
+  color: #ffffff;
+  box-shadow: 0 1px 4px rgba(13, 71, 161, 0.35);
+}
+.seg-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.off-dot {
+  background: #94a3b8;
+}
+.wire-seg-btn.active[data-state="off"] .off-dot {
+  background: #64748b;
+}
+.on-dot {
+  background: #94a3b8;
+}
+.wire-seg-btn.active[data-state="on"] .on-dot {
+  background: #00e676;
+  box-shadow: 0 0 6px #00e676;
+  animation: pulse-dot 1.2s infinite;
+}
+
+/* Quick Turn OFF Wire Mode Button */
+.wire-exit-btn {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1.5px solid #fca5a5;
+  font-weight: 700;
+  font-size: 12.5px;
+  border-radius: 8px;
+  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  animation: fade-in 0.2s ease-out;
+  transition: all 0.15s ease;
+}
+.wire-exit-btn:hover {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #dc2626;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+}
+.wire-exit-btn .exit-icon {
+  font-size: 11px;
+  font-weight: 900;
+}
+
+
+/* Backward-compatible wire-btn */
 .wire-btn {
   display: inline-flex; align-items: center; gap: 6px;
   background: #ffffff; border: 1.5px solid var(--border);

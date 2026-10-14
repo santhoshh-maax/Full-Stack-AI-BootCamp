@@ -148,6 +148,23 @@
       }
     }
 
+    function renderPending() {
+      if (!controller.pendingRef) return;
+      var p = lab.resolvePin(controller.pendingRef);
+      if (!p || !p.abs) return;
+      var g = document.createElementNS(SVG_NS, 'circle');
+      g.setAttribute('cx', p.abs.x);
+      g.setAttribute('cy', p.abs.y);
+      g.setAttribute('r', '13');
+      g.setAttribute('fill', 'none');
+      g.setAttribute('stroke', '#ff9800');
+      g.setAttribute('stroke-width', '3');
+      g.setAttribute('stroke-dasharray', '4 2');
+      g.setAttribute('class', 'pending-beacon');
+      g.setAttribute('pointer-events', 'none');
+      layer().appendChild(g);
+    }
+
     function render() {
       clearLayer();
       lab.state.connections.forEach(function (wire) {
@@ -321,19 +338,32 @@
     }
 
     function updateWireModeUI() {
+      var btnOff = document.getElementById('btnWireModeOff');
+      var btnOn = document.getElementById('btnWireModeOn');
+      var btnExit = document.getElementById('btnExitWireMode');
       var btn = document.getElementById('btnWireMode');
       var picker = document.getElementById('wireColorPicker');
       var svg = lab.svg || document.getElementById('workspaceSvg');
+
+      if (btnOff) {
+        btnOff.classList.toggle('active', !controller.wireMode);
+      }
+      if (btnOn) {
+        btnOn.classList.toggle('active', controller.wireMode);
+      }
+      if (btnExit) {
+        btnExit.style.display = controller.wireMode ? 'inline-flex' : 'none';
+      }
 
       if (btn) {
         if (controller.wireMode) {
           btn.classList.add('active');
           var textEl = btn.querySelector('.wire-btn-text');
-          if (textEl) textEl.textContent = 'Wire Mode: ACTIVE';
+          if (textEl) textEl.textContent = 'Wire Mode: ON (Click to OFF)';
         } else {
           btn.classList.remove('active');
           var textEl2 = btn.querySelector('.wire-btn-text');
-          if (textEl2) textEl2.textContent = 'Connect Wire';
+          if (textEl2) textEl2.textContent = 'Wire Mode: OFF (Click to ON)';
         }
       }
 
@@ -351,14 +381,20 @@
     }
 
     function setWireMode(active) {
+      var prev = controller.wireMode;
       controller.wireMode = Boolean(active);
       if (!controller.wireMode) {
         controller.pendingRef = null;
         lab.highlightPending(null);
-        lab.setStatus('Wire Mode: OFF. Drag and select components freely.');
+        lab.setStatus('Wire Mode is OFF. Drag and select components freely. Click [ON] to connect wires.');
+        if (prev) {
+          lab.toast('⚡ Wire Mode turned OFF. Select & drag mode active.', 'info');
+        }
       } else {
-        lab.setStatus('⚡ Wire Mode ACTIVE: Click the first pin to start drawing a wire.');
-        lab.toast('⚡ Wire Mode is now ACTIVE. Click two pins to connect them.', 'info');
+        lab.setStatus('⚡ Wire Mode is ON: Click the first pin to start drawing a wire. Click [OFF] or Esc to exit.');
+        if (!prev) {
+          lab.toast('⚡ Wire Mode turned ON. Click two pins to connect them.', 'info');
+        }
       }
       updateWireModeUI();
       if (lab.canvas && lab.canvas.render) lab.canvas.render();
@@ -384,14 +420,14 @@
     function onPinClick(ref) {
       // REQUIRE WIRE MODE TO CONNECT:
       if (!controller.wireMode) {
-        lab.setStatus('Wire Mode is OFF. Click "Connect Wire" in the toolbar to connect components.');
-        lab.toast('🔌 Click the "Connect Wire" button in the toolbar to start connecting pins.', 'info');
+        lab.setStatus('Wire Mode is OFF. Click [ON] in the toolbar to connect components.');
+        lab.toast('🔌 Click the [ON] button in the toolbar to activate Wire Mode.', 'info');
         return;
       }
 
       if (!controller.pendingRef) {
         controller.pendingRef = ref;
-        lab.setStatus('Connecting from ' + ref + '. Click a second pin to connect.');
+        lab.setStatus('Connecting from ' + ref + '. Click a second pin to connect, or click canvas to cancel.');
         lab.highlightPending(ref);
         render();
         return;
@@ -411,7 +447,7 @@
         lab.setStatus(result.error);
         lab.toast(result.error, 'error');
       } else {
-        lab.setStatus('Connected ' + (result.from) + ' \u2192 ' + (result.to) + '. Click another pin to connect, or click "Connect Wire" to stop.');
+        lab.setStatus('Connected ' + (result.from) + ' → ' + (result.to) + '. Click another pin to connect, or click [OFF] to stop.');
         lab.toast('Connected ' + result.from + ' ➜ ' + result.to, 'success');
       }
       render();

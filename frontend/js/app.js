@@ -613,7 +613,37 @@
       Lab.toast(r.valid ? 'Circuit is valid.' : 'Circuit has errors.', r.valid ? 'success' : 'error');
     });
 
-    // Wire connection tool button
+    // Wire Mode ON / OFF Switch Buttons
+    var wireBtnOff = document.getElementById('btnWireModeOff');
+    if (wireBtnOff) {
+      wireBtnOff.addEventListener('click', function () {
+        if (Lab.wires && Lab.wires.setWireMode) {
+          Lab.wires.setWireMode(false);
+        }
+      });
+    }
+
+    var wireBtnOn = document.getElementById('btnWireModeOn');
+    if (wireBtnOn) {
+      wireBtnOn.addEventListener('click', function () {
+        if (Lab.wires && Lab.wires.setWireMode) {
+          Lab.wires.setWireMode(true);
+        }
+      });
+    }
+
+    // Quick Exit Wire Mode Buttons (Toolbar + Floating Banner)
+    var exitWireBtn = document.getElementById('btnExitWireMode');
+    if (exitWireBtn) {
+      exitWireBtn.addEventListener('click', function () {
+        if (Lab.wires && Lab.wires.setWireMode) {
+          Lab.wires.setWireMode(false);
+        }
+      });
+    }
+
+
+    // Legacy/Shortcut Wire Mode Toggle Button
     var wireBtn = document.getElementById('btnWireMode');
     if (wireBtn) {
       wireBtn.addEventListener('click', function () {
