@@ -1346,6 +1346,86 @@
           lab.wires.onSvgMouseUp();
         }
       });
+
+      bindTouch();
+    }
+
+    /*
+     * Touch support: the workspace logic is mouse-based, so single-finger touch
+     * is translated into equivalent mouse events (drag, pan, tap-to-click) and
+     * two fingers pinch-zoom. Mouse behaviour is unchanged.
+     */
+    function bindTouch() {
+      var svg = lab.svg;
+      var t0 = null;      // { target, x, y, moved }
+      var pinch = null;   // { dist }
+
+      function fire(type, target, touch) {
+        (target || svg).dispatchEvent(new MouseEvent(type, {
+          bubbles: true, cancelable: true, view: window,
+          clientX: touch.clientX, clientY: touch.clientY, button: 0
+        }));
+      }
+      function dist(a, b) {
+        return Math.sqrt(Math.pow(a.clientX - b.clientX, 2) + Math.pow(a.clientY - b.clientY, 2));
+      }
+
+      svg.addEventListener('touchstart', function (ev) {
+        ev.preventDefault();
+        if (ev.touches.length === 2) {
+          // Abort any one-finger gesture, begin pinch.
+          if (t0) { fire('mouseup', svg, ev.touches[0]); t0 = null; }
+          pinch = { dist: dist(ev.touches[0], ev.touches[1]) };
+          return;
+        }
+        var t = ev.touches[0];
+        var target = document.elementFromPoint(t.clientX, t.clientY) || svg;
+        t0 = { target: target, x: t.clientX, y: t.clientY, moved: false };
+        fire('mousedown', target, t);
+      }, { passive: false });
+
+      svg.addEventListener('touchmove', function (ev) {
+        ev.preventDefault();
+        if (pinch && ev.touches.length === 2) {
+          var d = dist(ev.touches[0], ev.touches[1]);
+          if (pinch.dist > 0) {
+            var mid = toSvgPoint({
+              clientX: (ev.touches[0].clientX + ev.touches[1].clientX) / 2,
+              clientY: (ev.touches[0].clientY + ev.touches[1].clientY) / 2
+            });
+            zoomAt(mid, d / pinch.dist);
+          }
+          pinch.dist = d;
+          return;
+        }
+        if (!t0) return;
+        var t = ev.touches[0];
+        if (Math.abs(t.clientX - t0.x) > 6 || Math.abs(t.clientY - t0.y) > 6) t0.moved = true;
+        fire('mousemove', svg, t);
+      }, { passive: false });
+
+      function endTouch(ev) {
+        ev.preventDefault();
+        if (pinch) {
+          if (ev.touches.length < 2) pinch = null;
+          return;
+        }
+        if (!t0) return;
+        var t = ev.changedTouches[0];
+        var under = document.elementFromPoint(t.clientX, t.clientY) || svg;
+        var start = t0;
+        t0 = null;
+        fire('mouseup', under, t);
+        if (!start.moved) {
+          // A tap: deliver the click the browser would normally synthesise.
+          fire('click', start.target.isConnected ? start.target : under, t);
+        }
+      }
+      svg.addEventListener('touchend', endTouch, { passive: false });
+      svg.addEventListener('touchcancel', function (ev) {
+        if (t0) { fire('mouseup', svg, ev.changedTouches[0]); t0 = null; }
+        pinch = null;
+      }, { passive: false });
     }
 
     function dropHandler(ev) {

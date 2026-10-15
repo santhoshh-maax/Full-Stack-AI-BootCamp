@@ -1087,3 +1087,53 @@ summary { cursor: pointer; color: var(--blue-dark); font-weight: 600; font-size:
   .lab-grid { grid-template-columns: 1fr; }
   .workspace { height: 480px; }
 }
+
+/* ---- Touch / mobile responsiveness ---- */
+.workspace { touch-action: none; -webkit-tap-highlight-color: transparent; }
+html, body { overflow-x: hidden; }
+
+@media (max-width: 760px) {
+  .topbar { gap: 10px; padding: 8px 12px; }
+  .brand-text span { display: none; }
+  .nav-controls { margin-left: 0; width: 100%; gap: 10px; }
+  .nav-field { flex: 1 1 140px; }
+  .nav-field select { min-width: 0; width: 100%; min-height: 40px; }
+  .page-nav-tabs { width: 100%; order: 3; }
+  .page-tab-btn { flex: 1; justify-content: center; min-height: 40px; }
+  .lesson-subnav { padding: 6px 12px; overflow-x: auto; }
+  .lesson-pills { flex-wrap: nowrap; }
+  .lesson-pill { white-space: nowrap; min-height: 36px; }
+
+  .workspace-toolbar { gap: 6px; }
+  .workspace-toolbar .btn, .workspace-toolbar button { min-height: 40px; }
+  .workspace-wrap { min-height: 320px; }
+  .workspace { height: 60vh; min-height: 320px; max-height: 520px; }
+  .workspace-zoom-dock { bottom: 10px; right: 10px; }
+  .zoom-btn { width: 38px; height: 38px; }
+  .workspace-footer { flex-direction: column; align-items: stretch; }
+
+  .tabs .tab { flex: 1; min-height: 42px; padding: 8px 6px; }
+  .btn { min-height: 40px; }
+  textarea, input, select { font-size: 16px; } /* stops iOS zoom on focus */
+
+  .usage-view { padding: 12px; }
+  .usage-header h1 { font-size: 18px; }
+  .usage-header-actions { width: 100%; }
+  .usage-header-actions .btn { flex: 1; }
+  .usage-controls { flex-direction: column; align-items: stretch; gap: 8px; }
+  .usage-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .usage-table-host { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .usage-table-host table { min-width: 560px; }
+
+  .toast-host { left: 12px; right: 12px; bottom: 12px; }
+  .toast { max-width: none; }
+}
+
+@media (max-width: 420px) {
+  .usage-cards { grid-template-columns: 1fr; }
+  .brand-text strong { font-size: 14px; }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .palette-item { min-height: 44px; }
+}
